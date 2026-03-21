@@ -1,6 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Text, Boolean, Integer, ForeignKey, JSON, DateTime
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Text, Boolean, Integer, ForeignKey, JSON, DateTime, Uuid
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -9,8 +8,8 @@ from app.database import Base
 class Test(Base):
     __tablename__ = "tests"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    psychologist_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    psychologist_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     is_published = Column(Boolean, default=False, nullable=False)
@@ -24,8 +23,8 @@ class Test(Base):
 class Question(Base):
     __tablename__ = "questions"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    test_id = Column(UUID(as_uuid=True), ForeignKey("tests.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    test_id = Column(Uuid(as_uuid=True), ForeignKey("tests.id", ondelete="CASCADE"), nullable=False, index=True)
     order_index = Column(Integer, nullable=False, default=0)
     type = Column(String(50), nullable=False)  # single_choice, text, scale
     text = Column(Text, nullable=False)

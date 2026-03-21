@@ -1,11 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
-from typing import List
-
 from app.database import get_db
 from app import crud, schemas
-from app.routers.tests import get_current_psychologist_id
+from app.dependencies import get_current_psychologist_id
 
 router = APIRouter(prefix="/tests/{test_id}/questions", tags=["questions"])
 
@@ -28,6 +26,21 @@ async def add_question(
     
     question = await crud.QuestionCRUD.create(db, test_id, question_data, order_index)
     return question
+
+@router.put("/order", status_code=status.HTTP_204_NO_CONTENT)
+async def reorder_questions(
+    test_id: UUID,
+    order_data: schemas.QuestionsOrderUpdate,
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    """Изменить порядок вопросов (drag-and-drop)."""
+    psychologist_id = get_current_psychologist_id(request)
+    test = await crud.TestCRUD.get_by_id(db, test_id, psychologist_id)
+    if not test:
+        raise HTTPException(status_code=404, detail="Test not found")
+
+    await crud.QuestionCRUD.reorder(db, test_id, order_data.question_ids)
 
 @router.put("/{question_id}", response_model=schemas.QuestionResponse)
 async def update_question(
@@ -68,18 +81,3 @@ async def delete_question(
         raise HTTPException(status_code=404, detail="Question not found")
     
     await crud.QuestionCRUD.delete(db, question_id)
-
-@router.put("/order", status_code=status.HTTP_204_NO_CONTENT)
-async def reorder_questions(
-    test_id: UUID,
-    order_data: schemas.QuestionsOrderUpdate,
-    request: Request,
-    db: AsyncSession = Depends(get_db)
-):
-    """Изменить порядок вопросов (drag-and-drop)."""
-    psychologist_id = get_current_psychologist_id(request)
-    test = await crud.TestCRUD.get_by_id(db, test_id, psychologist_id)
-    if not test:
-        raise HTTPException(status_code=404, detail="Test not found")
-    
-    await crud.QuestionCRUD.reorder(db, test_id, order_data.question_ids)

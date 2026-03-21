@@ -4,7 +4,7 @@ import logging
 
 from app.config import settings
 from app.database import engine, Base
-from app.routers import tests, questions
+from app.routers import tests, questions, reports
 
 # Настройка логирования
 logging.basicConfig(
@@ -39,6 +39,7 @@ app = FastAPI(
 # Подключение роутеров
 app.include_router(tests.router)
 app.include_router(questions.router)
+app.include_router(reports.router)
 
 @app.get("/health")
 async def health() -> dict:
