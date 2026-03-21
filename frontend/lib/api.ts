@@ -49,12 +49,13 @@ const api = {
     return response.json();
   },
 
-  async delete<T>(url: string): Promise<T> {
+  async patch<T>(url: string, data?: any): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${url}`, {
-      method: 'DELETE',
+      method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
       },
+      body: data ? JSON.stringify(data) : undefined,
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     return response.json();
@@ -67,84 +68,106 @@ export const publicAPI = {
   getTestBySlug: async (slug: string) => {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
       // Заглушка для разработки
-      await new Promise(resolve => setTimeout(resolve, 500)); // Имитация задержки
+      await new Promise(resolve => setTimeout(resolve, 500));
       return {
-        id: 'test-1',
-        slug: slug,
-        title: 'Демо тест',
-        description: 'Описание демо теста',
-        questions: [
-          {
-            id: 'q1',
-            text: 'Как вас зовут?',
-            type: 'text',
-            required: true,
-            order: 0
-          },
-          {
-            id: 'q2',
-            text: 'Выберите вариант',
-            type: 'single_choice',
-            required: true,
-            order: 1,
-            options: [
-              { id: 'opt1', text: 'Вариант 1' },
-              { id: 'opt2', text: 'Вариант 2' },
-              { id: 'opt3', text: 'Вариант 3' }
-            ]
-          },
-          {
-            id: 'q3',
-            text: 'Оцените по шкале',
-            type: 'scale',
-            required: false,
-            order: 2,
-            min: 1,
-            max: 10
-          }
-        ]
+        data: {
+          id: 'test-1',
+          slug: slug,
+          title: 'Демо тест',
+          description: 'Описание демо теста',
+          questions: [
+            {
+              id: 'q1',
+              test_id: 'test-1',
+              order_index: 0,
+              text: 'Как вас зовут?',
+              type: 'text',
+              required: true,
+              metadata: {}
+            },
+            {
+              id: 'q2',
+              test_id: 'test-1',
+              order_index: 1,
+              text: 'Выберите вариант',
+              type: 'single_choice',
+              required: true,
+              metadata: {
+                options: [
+                  { id: 'opt1', text: 'Вариант 1' },
+                  { id: 'opt2', text: 'Вариант 2' },
+                  { id: 'opt3', text: 'Вариант 3' }
+                ]
+              }
+            },
+            {
+              id: 'q3',
+              test_id: 'test-1',
+              order_index: 2,
+              text: 'Оцените по шкале',
+              type: 'scale',
+              required: false,
+              metadata: {
+                scale_min: 1,
+                scale_max: 10,
+                scale_labels: {
+                  '1': 'Совсем не нравится',
+                  '10': 'Очень нравится'
+                }
+              }
+            }
+          ]
+        }
       };
     }
     
     const response = await api.get(`/public/tests/${slug}`);
-    return response.data;
+    return response;
   },
 
   // Создать сессию (начать прохождение)
-  createSession: async (slug: string, clientName: string, clientEmail?: string) => {
+  createSession: async (slug: string, clientName: string, clientEmail?: string, clientPhone?: string) => {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
       await new Promise(resolve => setTimeout(resolve, 300));
       const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       return {
-        id: sessionId,
-        clientName,
-        clientEmail,
-        testSlug: slug,
-        createdAt: new Date().toISOString(),
-        status: 'in_progress'
+        data: {
+          session_id: sessionId,
+          test_title: 'Демо тест',
+          total_questions: 3
+        }
       };
     }
     
-    const response = await api.post(`/public/tests/${slug}/sessions`, {
-      clientName,
-      clientEmail,
+    const response = await api.post(`/public/sessions/start`, {
+      test_slug: slug,
+      client_name: clientName,
+      client_email: clientEmail,
+      client_phone: clientPhone,
     });
-    return response.data;
+    return response;
   },
 
   // Сохранить ответ
   saveAnswer: async (sessionId: string, questionId: string, answer: any) => {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
       await new Promise(resolve => setTimeout(resolve, 200));
-      console.log('MOCK saveAnswer:', { sessionId, questionId, answer });
-      return { success: true };
+      console.log('MOCK saveAnswer:', { sessionId, questionId, answer_value: answer });
+      return {
+        data: {
+          session_id: sessionId,
+          question_id: questionId,
+          next_exists: true,
+          remaining_questions: 10
+        }
+      };
     }
     
-    const response = await api.post(`/public/sessions/${sessionId}/answers`, {
-      questionId,
-      answer,
+    const response = await api.post(`/public/sessions/${sessionId}/answer`, {
+      question_id: questionId,
+      answer_value: answer,
     });
-    return response.data;
+    return response;
   },
 
   // Завершить сессию
@@ -152,11 +175,18 @@ export const publicAPI = {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
       await new Promise(resolve => setTimeout(resolve, 500));
       console.log('MOCK completeSession:', sessionId);
-      return { success: true, completedAt: new Date().toISOString() };
+      return {
+        data: {
+          session_id: sessionId,
+          completed_at: new Date().toISOString(),
+          show_report: true,
+          report_url: `/reports/client/session/${sessionId}?format=html`
+        }
+      };
     }
     
-    const response = await api.patch(`/public/sessions/${sessionId}/complete`);
-    return response.data;
+    const response = await api.post(`/public/sessions/${sessionId}/complete`, {});
+    return response;
   },
 
   // Получить сессию (для продолжения)

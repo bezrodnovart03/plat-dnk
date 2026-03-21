@@ -1,7 +1,6 @@
-// hooks/use-client-session.ts
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { publicAPI } from '@/lib/api';
 
@@ -14,6 +13,15 @@ export function useClientSession(slug: string) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Answer[]>([]);
+  const [isTestCompleted, setIsTestCompleted] = useState(false); // ← НОВОЕ
+
+  // ← НОВОЕ: Загрузи sessionId из localStorage при монтировании
+  useEffect(() => {
+    const savedSessionId = localStorage.getItem(`session_${slug}`);
+    if (savedSessionId) {
+      setSessionId(savedSessionId);
+    }
+  }, [slug]);
 
   // --- Логика получения теста (из новой ветки) ---
   const { data: test, isLoading: testLoading } = useQuery({
@@ -27,7 +35,9 @@ export function useClientSession(slug: string) {
     mutationFn: ({ clientName, clientEmail }: { clientName: string; clientEmail?: string }) =>
       publicAPI.createSession(slug, clientName, clientEmail),
     onSuccess: (data) => {
-      setSessionId(data.id);
+      setSessionId(data.data.session_id);
+      // ← НОВОЕ: Сохрани sessionId в localStorage
+      localStorage.setItem(`session_${slug}`, data.data.session_id);
     },
   });
 
@@ -44,6 +54,11 @@ export function useClientSession(slug: string) {
 
   const completeSessionMutation = useMutation({
     mutationFn: () => publicAPI.completeSession(sessionId!),
+    onSuccess: () => {
+      // ← НОВОЕ: Установи флаг завершения теста
+      setIsTestCompleted(true);
+      console.log('✅ Test completed successfully!');
+    },
   });
 
   // --- Функции управления (Объединенные) ---
@@ -62,9 +77,9 @@ export function useClientSession(slug: string) {
   };
 
   // --- Вычисляемые данные ---
-  const questions = test?.questions || [];
+  const questions = test?.data?.questions || [];
   const totalQuestions = questions.length;
-  const isCompleted = currentQuestionIndex >= totalQuestions;
+  const isCompleted = isTestCompleted || currentQuestionIndex >= totalQuestions; // ← ИЗМЕНИЛ
   const progress = totalQuestions > 0 ? (currentQuestionIndex / totalQuestions) * 100 : 0;
 
   return {

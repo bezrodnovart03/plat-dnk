@@ -1,4 +1,3 @@
-// frontend/app/t/[slug]/thanks/page.tsx
 'use client';
 
 import { useRouter, useParams } from 'next/navigation';
@@ -8,7 +7,6 @@ export default function ThanksPage() {
   const router = useRouter();
   const params = useParams();
   
-  // Исправленное получение slug
   const slug = typeof params.slug === 'string' ? params.slug : params.slug?.[0];
   
   const [countdown, setCountdown] = useState(10);
@@ -38,7 +36,7 @@ export default function ThanksPage() {
 
         <h1 className="text-3xl font-bold text-gray-900 mb-4">Спасибо за прохождение!</h1>
         <p className="text-gray-600 mb-8">
-          Ваши ответы успешно сохранены. Результаты будут доступны после обработки.
+          Ваши ответы успешно сохранены. Результаты будут доступны для психолога после обработки.
         </p>
 
         <div className="space-y-4">

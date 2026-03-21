@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Question } from '@/types';
 
 interface QuestionDisplayProps {
@@ -22,16 +22,33 @@ export function QuestionDisplay({
   const [textAnswer, setTextAnswer] = useState('');
   const [scaleValue, setScaleValue] = useState<number | null>(null);
 
+  // ← НОВОЕ: Сброс state при смене вопроса
+  useEffect(() => {
+    setSelectedOption(null);
+    setTextAnswer('');
+    setScaleValue(null);
+  }, [question.id, questionNumber]); // Срабатывает когда меняется вопрос
+
+  // ← НОВОЕ: Логирование данных вопроса
+  useEffect(() => {
+    console.log('Current question:', question);
+    console.log('Question type:', question.type);
+    console.log('Question metadata:', question.metadata);
+  }, [question]);
+
   const handleSubmit = () => {
     let answer: any;
     switch (question.type) {
       case 'single-choice':
+      case 'single_choice':  // ← ДОБАВИЛ для support обоих форматов
         answer = selectedOption;
         break;
       case 'text':
         answer = textAnswer;
         break;
       case 'scale':
+      case 'scale-rate':
+      case 'scale_rate':  // ← ДОБАВИЛ для support разных форматов
         answer = scaleValue;
         break;
       default:
@@ -43,10 +60,13 @@ export function QuestionDisplay({
   const canSubmit = () => {
     switch (question.type) {
       case 'single-choice':
+      case 'single_choice':  // ← ДОБАВИЛ для support обоих форматов
         return selectedOption !== null;
       case 'text':
         return textAnswer.trim().length > 0;
       case 'scale':
+      case 'scale-rate':
+      case 'scale_rate':  // ← ДОБАВИЛ для support разных форматов
         return scaleValue !== null;
       default:
         return false;
@@ -63,9 +83,9 @@ export function QuestionDisplay({
 
       <h2 className="text-2xl font-bold text-gray-900">{question.text}</h2>
 
-      {question.type === 'single-choice' && question.options && (
+      {(question.type === 'single-choice' || question.type === 'single_choice') && question.metadata?.options && (
         <div className="space-y-3">
-          {question.options.map((option, idx) => (
+          {question.metadata.options.map((option, idx) => (
             <button
               key={option.id || idx}
               onClick={() => setSelectedOption(option.id || String(idx))}
@@ -93,23 +113,23 @@ export function QuestionDisplay({
         />
       )}
 
-      {question.type === 'scale' && question.settings && (
+      {(question.type === 'scale' || question.type === 'scale-rate' || question.type === 'scale_rate') && (
         <div className="space-y-4">
           <div className="flex justify-between text-sm text-gray-500">
-            <span>{question.settings.minLabel || 'Минимум'}</span>
-            <span>{question.settings.maxLabel || 'Максимум'}</span>
+            <span>{question.metadata?.scale_labels?.['1'] || question.metadata?.minLabel || 'Минимум'}</span>
+            <span>{question.metadata?.scale_labels?.[String(question.metadata?.scale_max || 10)] || question.metadata?.maxLabel || 'Максимум'}</span>
           </div>
           <input
             type="range"
-            min={question.settings.min || 1}
-            max={question.settings.max || 10}
-            value={scaleValue || question.settings.min || 1}
+            min={question.metadata?.scale_min || 1}
+            max={question.metadata?.scale_max || 10}
+            value={scaleValue || question.metadata?.scale_min || 1}
             onChange={(e) => setScaleValue(Number(e.target.value))}
             disabled={disabled}
             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
           />
           <div className="text-center text-lg font-semibold text-indigo-600">
-            {scaleValue || question.settings.min || 1}
+            {scaleValue || question.metadata?.scale_min || 1}
           </div>
         </div>
       )}

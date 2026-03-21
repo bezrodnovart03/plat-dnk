@@ -1,9 +1,7 @@
-interface CompletionScreenProps {
-  onComplete: () => void;
-  isLoading?: boolean;
-}
+'use client';
 
-export function CompletionScreen({ onComplete, isLoading }: CompletionScreenProps) {
+export function CompletionScreen() {
+
   return (
     <div className="mt-8 p-6 bg-green-50 border border-green-200 rounded-xl text-center">
       <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -12,16 +10,9 @@ export function CompletionScreen({ onComplete, isLoading }: CompletionScreenProp
         </svg>
       </div>
       <h3 className="text-lg font-semibold text-green-800 mb-2">Тест завершён!</h3>
-      <p className="text-green-700 text-sm mb-4">
-        Все ответы сохранены. Вы можете увидеть результаты.
+      <p className="text-green-700 text-sm">
+        Все ответы сохранены. Результаты будут доступны для психолога после обработки.
       </p>
-      <button
-        onClick={onComplete}
-        disabled={isLoading}
-        className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-2 px-6 rounded-lg transition-all"
-      >
-        {isLoading ? 'Обработка...' : 'Показать результаты'}
-      </button>
     </div>
   );
 }

@@ -9,37 +9,56 @@ interface StartFormProps {
 
 export function StartForm({ slug }: StartFormProps) {
   const router = useRouter();
-  const [name, setName] = useState('');
+const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const { startSession, isLoading, error } = useClientSession(slug);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim().length < 2) return;
+    if (fullName.trim().length < 2 || email.trim().length === 0) return;
     
     try {
-      await startSession(name.trim());
-      router.push(`/t/${slug}/test`); // ← Редирект после создания сессии
-    } catch (err) {
-      console.error('Failed to start session:', err);
-    }
-  };
+      console.log('Starting session with fullName:', fullName, 'email:', email);
+      await startSession(fullName.trim(), email.trim());
+      console.log('Session started, redirecting...');
+    router.push(`/t/${slug}/test`);
+  } catch (err) {
+    console.error('Failed to start session:', err);
+  }
+};
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-          Ваше имя
+        <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
+          ФИО
         </label>
         <input
-          id="name"
+          id="fullName"
           type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Введите ваше имя"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          placeholder="Введите ваше полное имя"
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
           disabled={isLoading}
           required
           minLength={2}
+        />
+      </div>
+
+      <div>
+        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+          Электронная почта
+        </label>
+        <input
+          id="email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Введите вашу электронную почту"
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+          disabled={isLoading}
+          required
         />
       </div>
 
@@ -51,7 +70,7 @@ export function StartForm({ slug }: StartFormProps) {
 
       <button
         type="submit"
-        disabled={isLoading || name.trim().length < 2}
+        disabled={isLoading || fullName.trim().length < 2 || email.trim().length === 0}
         className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg"
       >
         {isLoading ? 'Загрузка...' : 'Начать тест'}
