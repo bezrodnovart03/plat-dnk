@@ -1,4 +1,3 @@
-// hooks/use-tests.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { testsAPI } from '@/lib/api';
 
@@ -46,7 +45,7 @@ export function useUpdateTest() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
+    mutationFn: ({ id, data }: { id: string; data: { title?: string; description?: string; isPublished?: boolean } }) =>
       testsAPI.update(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tests'] });
@@ -75,6 +74,7 @@ export function useAddQuestion(testId: string) {
     mutationFn: (data: any) => testsAPI.addQuestion(testId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tests', testId, 'questions'] });
+      queryClient.invalidateQueries({ queryKey: ['tests', testId] });
     },
   });
 }
