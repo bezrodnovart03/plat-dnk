@@ -1,0 +1,77 @@
+networks:
+  dev:
+services:
+  nginx:
+    image: nginx:stable-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - './nginx.conf:/etc/nginx/nginx.conf'
+    depends_on:
+    - psql
+    - auth-service
+    - gateway
+    - test-service
+    - session-service
+    - report-service
+    - frontend
+
+
+  gateway:
+    build: app
+    # Запускаем тестовый сервер
+    command: uvicorn app.main:app --host 0.0.0.0
+    # куда будут помещены данные из каталога app
+    volumes:
+      - .:/app
+    # Открываем порт 8000 внутри и снаружи
+    ports:
+      - 8000:8001
+  auth-service:
+    build: app
+    # Запускаем тестовый сервер
+    command: uvicorn app.main:app --host 0.0.0.0
+    # куда будут помещены данные из каталога app
+    volumes:
+      - .:/app
+    # Открываем порт 8000 внутри и снаружи
+    ports:
+      - 8000:8000
+
+  frontend:
+    image: frontend
+    build:
+      context: ./frontend
+    ports:
+    - "80:80"
+    environment:
+      BACKEND_HOST: backend
+      BACKEND_PORT: 8080
+
+
+  psql:
+    image: postgres:16
+    command: postgres -c config_file=/postgresql.conf
+    environment:
+      PGDATA: HACKHATON_2026
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes: 
+      db-data: /var/lib/postgresql/data
+
+    ports:
+      - "5432:5438"
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: dudon@noemail.com
+      PGADMIN_DEFAULT_PASSWORD: root
+    ports:
+      - "5050:80"
