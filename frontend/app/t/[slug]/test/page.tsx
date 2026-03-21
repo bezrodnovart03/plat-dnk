@@ -68,7 +68,7 @@ export default function TestPage() {
   // ← ИСПРАВИЛ: Если тест завершён, показываем экран спасибо
   if (!isMounted || isLoading || !sessionId) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4" />
           <p className="text-gray-600">Загрузка...</p>
@@ -80,10 +80,28 @@ export default function TestPage() {
   // ← НОВОЕ: Если тест завершён, показываем CompletionScreen
   if (isCompleted) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
-        <div className="max-w-3xl mx-auto">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col">
+        {/* Header */}
+        <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 px-8 py-4">
+          <div className="max-w-screen-2xl mx-auto flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+              <span className="text-white font-bold text-sm">П</span>
+            </div>
+            <h1 className="text-lg font-semibold text-gray-900">ПрофДНК</h1>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="flex-1 max-w-screen-2xl mx-auto w-full px-8 py-12 md:py-20 flex items-center justify-center">
           <CompletionScreen />
-        </div>
+        </main>
+
+        {/* Footer */}
+        <footer className="bg-white border-t border-gray-200/50 py-6 px-8 text-center text-sm text-gray-500">
+          <div className="max-w-screen-2xl mx-auto">
+            © {new Date().getFullYear()} ПрофДНК — платформа для профориентологов
+          </div>
+        </footer>
       </div>
     );
   }
@@ -91,7 +109,7 @@ export default function TestPage() {
   // ← НОВОЕ: Проверяем что текущий вопрос существует
   if (!currentQuestion) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="text-center">
           <p className="text-gray-600">Вопрос не найден</p>
         </div>
@@ -109,10 +127,26 @@ export default function TestPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-3xl mx-auto">
-        <ProgressBar current={currentQuestionIndex + 1} total={totalQuestions} className="mb-8" />
-        <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col">
+      {/* Header */}
+      <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 px-8 py-4">
+        <div className="max-w-screen-2xl mx-auto flex items-center space-x-3">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+            <span className="text-white font-bold text-sm">П</span>
+          </div>
+          <h1 className="text-lg font-semibold text-gray-900">ПрофДНК</h1>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 max-w-screen-2xl mx-auto w-full px-8 py-12 md:py-16">
+        {/* Progress Bar */}
+        <div className="mb-8">
+          <ProgressBar current={currentQuestionIndex + 1} total={totalQuestions} />
+        </div>
+
+        {/* Question Card */}
+        <div className="bg-white rounded-2xl border border-gray-200/50 p-8 md:p-12 shadow-sm hover:shadow-md transition-all duration-200">
           <QuestionDisplay
             question={currentQuestion}
             questionNumber={currentQuestionIndex + 1}
@@ -121,12 +155,21 @@ export default function TestPage() {
             disabled={isLoading}
           />
         </div>
+
+        {/* Error Message */}
         {error && (
-          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700">
             {error}
           </div>
         )}
-      </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-gray-200/50 py-6 px-8 text-center text-sm text-gray-500">
+        <div className="max-w-screen-2xl mx-auto">
+          © {new Date().getFullYear()} ПрофДНК — платформа для профориентологов
+        </div>
+      </footer>
     </div>
   );
 }
