@@ -1,56 +1,9 @@
 networks:
   dev:
 services:
-  nginx:
-    image: nginx:stable-alpine
-    ports:
-      - "80:80"
-    volumes:
-      - './nginx.conf:/etc/nginx/nginx.conf'
-    depends_on:
-    - psql
-    - auth-service
-    - gateway
-    - test-service
-    - session-service
-    - report-service
-    - frontend
-
-
-  gateway:
-    build: app
-    # Запускаем тестовый сервер
-    command: uvicorn app.main:app --host 0.0.0.0
-    # куда будут помещены данные из каталога app
-    volumes:
-      - .:/app
-    # Открываем порт 8000 внутри и снаружи
-    ports:
-      - 8000:8001
-  auth-service:
-    build: app
-    # Запускаем тестовый сервер
-    command: uvicorn app.main:app --host 0.0.0.0
-    # куда будут помещены данные из каталога app
-    volumes:
-      - .:/app
-    # Открываем порт 8000 внутри и снаружи
-    ports:
-      - 8000:8000
-
-  frontend:
-    image: frontend
-    build:
-      context: ./frontend
-    ports:
-    - "80:80"
-    environment:
-      BACKEND_HOST: backend
-      BACKEND_PORT: 8080
-
-
   psql:
     image: postgres:16
+    container_name: H_postgres
     command: postgres -c config_file=/postgresql.conf
     environment:
       PGDATA: HACKHATON_2026
@@ -64,14 +17,111 @@ services:
       retries: 5
     volumes: 
       db-data: /var/lib/postgresql/data
-
     ports:
       - "5432:5438"
+    networks:
+      - dev
+
   pgadmin:
-    container_name: pgadmin
     image: dpage/pgadmin4
+    container_name: pgadmin
     environment:
       PGADMIN_DEFAULT_EMAIL: dudon@noemail.com
       PGADMIN_DEFAULT_PASSWORD: root
     ports:
       - "5050:80"
+    networks:
+      - dev
+    depends_on:
+      - psql
+
+  auth-service:
+    build: ./auth-service # Путь к папке сервиса
+    container_name: h_auth
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./auth-service:/app
+    ports:
+      - "8001:8000"
+    networks:
+      - dev
+    depends_on:
+      psql:
+        condition: service_healthy
+
+  test-service:
+    build: ./test-service
+    container_name: h_test
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./test-service:/app
+    ports:
+      - "8002:8000"
+    networks:
+      - dev
+    depends_on:
+      psql:
+        condition: service_healthy
+
+  session-service:
+    build: ./session-service
+    container_name: h_session
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./session-service:/app
+    ports:
+      - "8003:8000"
+    networks:
+      - dev
+    depends_on:
+      psql:
+        condition: service_healthy
+
+  report-service:
+      build: ./report-service
+      container_name: h_report
+      command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      volumes:
+        - ./report-service:/app
+      ports:
+        - "8004:8000"
+      networks:
+        - dev
+  gateway:
+    build: ./gateway
+    container_name: h_gateway
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./gateway:/app
+    ports:
+      - "8080:8000"
+    networks:
+      - dev
+    depends_on:
+      - auth-service
+      - test-service
+      - session-service
+      - report-service
+  frontend:
+    build:
+      context: ./frontend
+    container_name: H_frontend
+    ports:
+    - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8080
+    networks:
+      - dev
+
+  nginx:
+    image: nginx:stable-alpine
+    container_name: H_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - './nginx.conf:/etc/nginx/nginx.conf'
+    depends_on:
+    - gateway
+    - frontend
+    networks:
+      - dev
