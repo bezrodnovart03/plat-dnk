@@ -1,193 +1,277 @@
-// lib/api.ts
-import axios from 'axios';
+// frontend/lib/api.ts
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+import { 
+  Test, 
+  Question, 
+  Session, 
+  ClientReport, 
+  ApiResponse,
+  User 
+} from '@/types';
 
-export const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+// Базовый URL API (из переменных окружения или localhost)
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
-// Интерцептор для добавления токена
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Интерцептор для обработки ошибок
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
-
-// ============== AUTH API ==============
-export const authAPI = {
-  login: async (email: string, password: string) => {
-    const response = await api.post('/auth/login', { email, password });
-    if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
-    }
-    return response.data;
-  },
-
-  logout: () => {
-    localStorage.removeItem('token');
-  },
-
-  getMe: async () => {
-    const response = await api.get('/auth/me');
-    return response.data;
-  },
-};
-
-// ============== TESTS API ==============
-export const testsAPI = {
-  // Получить все тесты психолога
-  getAll: async () => {
-    const response = await api.get('/tests');
-    return response.data;
-  },
-
-  // Получить тест по ID
-  getById: async (id: string) => {
-    const response = await api.get(`/tests/${id}`);
-    return response.data;
-  },
-
-  // Создать тест
-  create: async (data: { title: string; description?: string }) => {
-    const response = await api.post('/tests', data);
-    return response.data;
-  },
-
-  // Обновить тест
-  update: async (id: string, data: { title?: string; description?: string; isPublished?: boolean }) => {
-    const response = await api.patch(`/tests/${id}`, data);
-    return response.data;
-  },
-
-  // Удалить тест
-  delete: async (id: string) => {
-    const response = await api.delete(`/tests/${id}`);
-    return response.data;
-  },
-
-  // Получить вопросы теста
-  getQuestions: async (testId: string) => {
-    const response = await api.get(`/tests/${testId}/questions`);
-    return response.data;
-  },
-
-  // Добавить вопрос
-  addQuestion: async (testId: string, data: any) => {
-    const response = await api.post(`/tests/${testId}/questions`, data);
-    return response.data;
-  },
-
-  // Обновить вопрос
-  updateQuestion: async (testId: string, questionId: string, data: any) => {
-    const response = await api.patch(`/tests/${testId}/questions/${questionId}`, data);
-    return response.data;
-  },
-
-  // Удалить вопрос
-  deleteQuestion: async (testId: string, questionId: string) => {
-    const response = await api.delete(`/tests/${testId}/questions/${questionId}`);
-    return response.data;
-  },
-
-  // Изменить порядок вопросов
-  reorderQuestions: async (testId: string, questionIds: string[]) => {
-    const response = await api.patch(`/tests/${testId}/questions/reorder`, { questionIds });
-    return response.data;
-  },
-};
-
-// ============== SESSIONS API ==============
-export const sessionsAPI = {
-  // Получить все сессии психолога (или по тесту)
-  getAll: async (testId?: string) => {
-    const url = testId ? `/sessions?testId=${testId}` : '/sessions';
-    const response = await api.get(url);
-    return response.data;
-  },
-
-  // Получить сессию по ID
-  getById: async (id: string) => {
-    const response = await api.get(`/sessions/${id}`);
-    return response.data;
-  },
-
-  // Получить сессии по тесту (альтернативный метод)
-  getByTestId: async (testId: string) => {
-    const response = await api.get(`/tests/${testId}/sessions`);
-    return response.data;
-  },
-};
-
-// ============== REPORTS API ==============
-export const reportsAPI = {
-  // Скачать отчёт в DOCX
-  getReport: async (sessionId: string) => {
-    const response = await api.get(`/reports/${sessionId}`, {
-      responseType: 'blob',
+// Базовый экземпляр fetch
+const api = {
+  async get<T>(url: string): Promise<T> {
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
-    return response.data;
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    return response.json();
   },
 
-  // Получить отчёт в формате JSON (для предпросмотра)
-  getReportJSON: async (sessionId: string) => {
-    const response = await api.get(`/reports/${sessionId}/json`);
-    return response.data;
+  async post<T>(url: string, data: any): Promise<T> {
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    return response.json();
+  },
+
+  async put<T>(url: string, data: any): Promise<T> {
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    return response.json();
+  },
+
+  async delete<T>(url: string): Promise<T> {
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    return response.json();
   },
 };
 
-// ============== PUBLIC API (для клиента) ==============
+// ============================================
+// 🔵 PUBLIC API (для Frontend C — Клиент)
+// ============================================
 export const publicAPI = {
-  // Получить тест по slug
-  getTestBySlug: async (slug: string) => {
-    const response = await api.get(`/public/tests/${slug}`);
-    return response.data;
+  // Начало сессии клиента (ввод имени)
+  startClientSession: async (slug: string, name: string) => {
+    // MOCK для разработки
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      console.log('MOCK startClientSession:', { slug, name });
+      return { 
+        data: { 
+          sessionId: `session_${Date.now()}`,
+          clientName: name 
+        } 
+      };
+    }
+    // Реальный API
+    return api.post<ApiResponse<{ sessionId: string; clientName: string }>>(
+      `/tests/${slug}/start`,
+      { name }
+    );
   },
 
-  // Создать сессию (начать прохождение)
-  createSession: async (slug: string, clientName: string, clientEmail?: string) => {
-    const response = await api.post(`/public/tests/${slug}/sessions`, {
-      clientName,
-      clientEmail,
-    });
-    return response.data;
-  },
-
-  // Сохранить ответ
-  saveAnswer: async (sessionId: string, questionId: string, answer: any) => {
-    const response = await api.post(`/public/sessions/${sessionId}/answers`, {
+  // Отправка ответа на вопрос
+  submitAnswer: async (sessionId: string, questionId: string, answer: any) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      console.log('MOCK submitAnswer:', { sessionId, questionId, answer });
+      return { data: { success: true } };
+    }
+    return api.post<ApiResponse<void>>(`/sessions/${sessionId}/answer`, {
       questionId,
       answer,
     });
-    return response.data;
   },
 
-  // Завершить сессию
+  // Завершение сессии
   completeSession: async (sessionId: string) => {
-    const response = await api.patch(`/public/sessions/${sessionId}/complete`);
-    return response.data;
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      console.log('MOCK completeSession:', sessionId);
+      return { data: { success: true } };
+    }
+    return api.post<ApiResponse<void>>(`/sessions/${sessionId}/complete`);
   },
 
-  // Получить сессию (для продолжения)
-  getSession: async (sessionId: string) => {
-    const response = await api.get(`/public/sessions/${sessionId}`);
-    return response.data;
+  // Получение теста по slug
+  getTestBySlug: async (slug: string) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      console.log('MOCK getTestBySlug:', slug);
+      return { 
+        data: { 
+          slug, 
+          name: 'Тестовый тест',
+          description: 'Описание для тестирования'
+        } 
+      };
+    }
+    return api.get<ApiResponse<Test>>(`/tests/slug/${slug}`);
   },
+
+  // Получение вопросов теста
+  getTestQuestions: async (slug: string) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      console.log('MOCK getTestQuestions:', slug);
+      return { 
+        data: {
+          questions: [
+            { id: '1', text: 'Как вас зовут?', type: 'text' },
+            {
+              id: '2',
+              text: 'Выберите вариант',
+              type: 'single-choice',
+              options: [
+                { id: 'a', text: 'Вариант А' },
+                { id: 'b', text: 'Вариант Б' },
+              ],
+            },
+            {
+              id: '3',
+              text: 'Оцените по шкале',
+              type: 'scale',
+              settings: { min: 1, max: 10, minLabel: 'Плохо', maxLabel: 'Отлично' }
+            }
+          ],
+        }
+      };
+    }
+    return api.get<ApiResponse<Question[]>>(`/tests/${slug}/questions`);
+  },
+};
+
+// ============================================
+// 📊 TESTS API (для Frontend A и B)
+// ============================================
+export const testsAPI = {
+  // Получить все тесты
+  getAll: () => api.get<ApiResponse<Test[]>>('/tests'),
+
+  // Получить тест по ID
+  getById: (id: string) => api.get<ApiResponse<Test>>(`/tests/${id}`),
+
+  // Создать новый тест
+  create: (data: { title: string; description?: string }) =>
+    api.post<ApiResponse<Test>>('/tests', data),
+
+  // Обновить тест
+  update: (id: string, data: Partial<Test>) =>
+    api.put<ApiResponse<Test>>(`/tests/${id}`, data),
+
+  // Удалить тест
+  delete: (id: string) => api.delete(`/tests/${id}`),
+
+  // Добавить вопрос к тесту
+  addQuestion: (testId: string, data: Partial<Question>) =>
+    api.post<ApiResponse<Question>>(`/tests/${testId}/questions`, data),
+
+  // Обновить вопрос
+  updateQuestion: (id: string, data: Partial<Question>) =>
+    api.put<ApiResponse<Question>>(`/questions/${id}`, data),
+
+  // Удалить вопрос
+  deleteQuestion: (id: string) => api.delete(`/questions/${id}`),
+
+  // Изменить порядок вопросов
+  reorderQuestions: (testId: string, questionIds: string[]) =>
+    api.put(`/tests/${testId}/questions/order`, { question_ids: questionIds }),
+
+  // Получить ссылку для partage (для Frontend B)
+  getShareLink: (testId: string) =>
+    api.get<ApiResponse<{ shareLink: string }>>(`/tests/${testId}/share`),
+};
+
+// ============================================
+// 📋 SESSIONS API (для Frontend A)
+// ============================================
+export const sessionsAPI = {
+  // Получить все сессии
+  getAll: () => api.get<ApiResponse<Session[]>>('/sessions'),
+
+  // Получить сессию по ID
+  getById: (id: string) => api.get<ApiResponse<Session>>(`/sessions/${id}`),
+
+  // Получить сессии по тесту
+  getByTest: (testId: string) =>
+    api.get<ApiResponse<Session[]>>(`/tests/${testId}/sessions`),
+
+  // Получить ответы сессии
+  getAnswers: (sessionId: string) =>
+    api.get<ApiResponse<any[]>>(`/sessions/${sessionId}/answers`),
+
+  // Удалить сессию
+  delete: (id: string) => api.delete(`/sessions/${id}`),
+};
+
+// ============================================
+// 📈 REPORTS API (для Frontend A и C)
+// ============================================
+export const reportsAPI = {
+  // Получить отчёт клиента (для Frontend C)
+  getClientReport: async (sessionId: string) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      console.log('MOCK getClientReport:', sessionId);
+      return {
+        data: {
+          testName: 'Тестовый тест',
+          completedAt: new Date().toISOString(),
+          summary: 'Тест пройден успешно',
+          recommendations: 'Рекомендации для улучшения',
+        }
+      };
+    }
+    return api.get<ApiResponse<ClientReport>>(`/sessions/${sessionId}/report`);
+  },
+
+  // Скачать отчёт теста (для Frontend A)
+  downloadTestReport: (testId: string) =>
+    api.get<Blob>(`/tests/${testId}/report/download`),
+
+  // Получить статистику теста
+  getTestStats: (testId: string) =>
+    api.get<ApiResponse<{ totalSessions: number; avgScore?: number }>>(
+      `/tests/${testId}/stats`
+    ),
+};
+
+// ============================================
+// 👤 AUTH API (для Team Lead)
+// ============================================
+export const authAPI = {
+  // Войти
+  login: (email: string, password: string) =>
+    api.post<ApiResponse<{ token: string; user: User }>>('/auth/login', {
+      email,
+      password,
+    }),
+
+  // Выйти
+  logout: () => api.post('/auth/logout', {}),
+
+  // Получить текущего пользователя
+  getCurrentUser: () => api.get<ApiResponse<User>>('/auth/me'),
+
+  // Регистрация
+  register: (data: { email: string; password: string; name: string }) =>
+    api.post<ApiResponse<{ token: string; user: User }>>('/auth/register', data),
+};
+
+// Экспорт для удобства
+export default {
+  publicAPI,
+  testsAPI,
+  sessionsAPI,
+  reportsAPI,
+  authAPI,
 };

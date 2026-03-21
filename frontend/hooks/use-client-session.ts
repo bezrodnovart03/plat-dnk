@@ -1,4 +1,6 @@
 // hooks/use-client-session.ts
+'use client';
+
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { publicAPI } from '@/lib/api';
@@ -13,14 +15,14 @@ export function useClientSession(slug: string) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Answer[]>([]);
 
-  // Получить тест
+  // --- Логика получения теста (из новой ветки) ---
   const { data: test, isLoading: testLoading } = useQuery({
     queryKey: ['public', 'test', slug],
     queryFn: () => publicAPI.getTestBySlug(slug),
     enabled: !!slug,
   });
 
-  // Создать сессию
+  // --- Мутации (из новой ветки) ---
   const createSessionMutation = useMutation({
     mutationFn: ({ clientName, clientEmail }: { clientName: string; clientEmail?: string }) =>
       publicAPI.createSession(slug, clientName, clientEmail),
@@ -29,7 +31,6 @@ export function useClientSession(slug: string) {
     },
   });
 
-  // Сохранить ответ
   const saveAnswerMutation = useMutation({
     mutationFn: ({ questionId, answer }: Answer) =>
       publicAPI.saveAnswer(sessionId!, questionId, answer),
@@ -41,11 +42,11 @@ export function useClientSession(slug: string) {
     },
   });
 
-  // Завершить сессию
   const completeSessionMutation = useMutation({
     mutationFn: () => publicAPI.completeSession(sessionId!),
   });
 
+  // --- Функции управления (Объединенные) ---
   const startSession = async (clientName: string, clientEmail?: string) => {
     const result = await createSessionMutation.mutateAsync({ clientName, clientEmail });
     return result;
@@ -60,6 +61,7 @@ export function useClientSession(slug: string) {
     await completeSessionMutation.mutateAsync();
   };
 
+  // --- Вычисляемые данные ---
   const questions = test?.questions || [];
   const totalQuestions = questions.length;
   const isCompleted = currentQuestionIndex >= totalQuestions;
