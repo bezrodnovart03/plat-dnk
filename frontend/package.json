@@ -32,7 +32,8 @@
     "tailwind-merge": "^2.0.0",
     "class-variance-authority": "^0.7.0",
     "lucide-react": "^0.400.0",
-    "date-fns": "^3.0.0"
+    "date-fns": "^3.0.0",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "eslint": "^8.0.0",
