@@ -29,7 +29,7 @@ export default function TestPage() {
     // Игнорируем ошибки декодирования
   }
 
-  const { sessionId, currentQuestionIndex, submitAnswer, completeTest, isLoading, error } = useClientSession(slug);
+const { sessionId, currentQuestionIndex, submitAnswer, completeTest, isLoading, error } = useClientSession(slug);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);

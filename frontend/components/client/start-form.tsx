@@ -1,7 +1,6 @@
-// frontend/components/client/start-form.tsx
 'use client';
-
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useClientSession } from '@/hooks/use-client-session';
 
 interface StartFormProps {
@@ -9,13 +8,20 @@ interface StartFormProps {
 }
 
 export function StartForm({ slug }: StartFormProps) {
+  const router = useRouter();
   const [name, setName] = useState('');
   const { startSession, isLoading, error } = useClientSession(slug);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); // Обязательно предотвращаем перезагрузку
+    e.preventDefault();
     if (name.trim().length < 2) return;
-    await startSession(name.trim());
+    
+    try {
+      await startSession(name.trim());
+      router.push(`/t/${slug}/test`); // ← Редирект после создания сессии
+    } catch (err) {
+      console.error('Failed to start session:', err);
+    }
   };
 
   return (

@@ -61,93 +61,118 @@ const api = {
   },
 };
 
-// ============================================
-// 🔵 PUBLIC API (для Frontend C — Клиент)
-// ============================================
+// ============== PUBLIC API (для клиента) ==============
 export const publicAPI = {
-  // Начало сессии клиента (ввод имени)
-  startClientSession: async (slug: string, name: string) => {
-    // MOCK для разработки
+  // Получить тест по slug
+  getTestBySlug: async (slug: string) => {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-      console.log('MOCK startClientSession:', { slug, name });
-      return { 
-        data: { 
-          sessionId: `session_${Date.now()}`,
-          clientName: name 
-        } 
+      // Заглушка для разработки
+      await new Promise(resolve => setTimeout(resolve, 500)); // Имитация задержки
+      return {
+        id: 'test-1',
+        slug: slug,
+        title: 'Демо тест',
+        description: 'Описание демо теста',
+        questions: [
+          {
+            id: 'q1',
+            text: 'Как вас зовут?',
+            type: 'text',
+            required: true,
+            order: 0
+          },
+          {
+            id: 'q2',
+            text: 'Выберите вариант',
+            type: 'single_choice',
+            required: true,
+            order: 1,
+            options: [
+              { id: 'opt1', text: 'Вариант 1' },
+              { id: 'opt2', text: 'Вариант 2' },
+              { id: 'opt3', text: 'Вариант 3' }
+            ]
+          },
+          {
+            id: 'q3',
+            text: 'Оцените по шкале',
+            type: 'scale',
+            required: false,
+            order: 2,
+            min: 1,
+            max: 10
+          }
+        ]
       };
     }
-    // Реальный API
-    return api.post<ApiResponse<{ sessionId: string; clientName: string }>>(
-      `/tests/${slug}/start`,
-      { name }
-    );
+    
+    const response = await api.get(`/public/tests/${slug}`);
+    return response.data;
   },
 
-  // Отправка ответа на вопрос
-  submitAnswer: async (sessionId: string, questionId: string, answer: any) => {
+  // Создать сессию (начать прохождение)
+  createSession: async (slug: string, clientName: string, clientEmail?: string) => {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-      console.log('MOCK submitAnswer:', { sessionId, questionId, answer });
-      return { data: { success: true } };
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      return {
+        id: sessionId,
+        clientName,
+        clientEmail,
+        testSlug: slug,
+        createdAt: new Date().toISOString(),
+        status: 'in_progress'
+      };
     }
-    return api.post<ApiResponse<void>>(`/sessions/${sessionId}/answer`, {
+    
+    const response = await api.post(`/public/tests/${slug}/sessions`, {
+      clientName,
+      clientEmail,
+    });
+    return response.data;
+  },
+
+  // Сохранить ответ
+  saveAnswer: async (sessionId: string, questionId: string, answer: any) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      console.log('MOCK saveAnswer:', { sessionId, questionId, answer });
+      return { success: true };
+    }
+    
+    const response = await api.post(`/public/sessions/${sessionId}/answers`, {
       questionId,
       answer,
     });
+    return response.data;
   },
 
-  // Завершение сессии
+  // Завершить сессию
   completeSession: async (sessionId: string) => {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 500));
       console.log('MOCK completeSession:', sessionId);
-      return { data: { success: true } };
+      return { success: true, completedAt: new Date().toISOString() };
     }
-    return api.post<ApiResponse<void>>(`/sessions/${sessionId}/complete`);
+    
+    const response = await api.patch(`/public/sessions/${sessionId}/complete`);
+    return response.data;
   },
 
-  // Получение теста по slug
-  getTestBySlug: async (slug: string) => {
+  // Получить сессию (для продолжения)
+  getSession: async (sessionId: string) => {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-      console.log('MOCK getTestBySlug:', slug);
-      return { 
-        data: { 
-          slug, 
-          name: 'Тестовый тест',
-          description: 'Описание для тестирования'
-        } 
+      await new Promise(resolve => setTimeout(resolve, 300));
+      return {
+        id: sessionId,
+        clientName: 'Тестовый клиент',
+        status: 'in_progress',
+        answers: []
       };
     }
-    return api.get<ApiResponse<Test>>(`/tests/slug/${slug}`);
-  },
-
-  // Получение вопросов теста
-  getTestQuestions: async (slug: string) => {
-    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-      console.log('MOCK getTestQuestions:', slug);
-      return { 
-        data: {
-          questions: [
-            { id: '1', text: 'Как вас зовут?', type: 'text' },
-            {
-              id: '2',
-              text: 'Выберите вариант',
-              type: 'single-choice',
-              options: [
-                { id: 'a', text: 'Вариант А' },
-                { id: 'b', text: 'Вариант Б' },
-              ],
-            },
-            {
-              id: '3',
-              text: 'Оцените по шкале',
-              type: 'scale',
-              settings: { min: 1, max: 10, minLabel: 'Плохо', maxLabel: 'Отлично' }
-            }
-          ],
-        }
-      };
-    }
-    return api.get<ApiResponse<Question[]>>(`/tests/${slug}/questions`);
+    
+    const response = await api.get(`/public/sessions/${sessionId}`);
+    return response.data;
   },
 };
 
@@ -275,3 +300,4 @@ export default {
   reportsAPI,
   authAPI,
 };
+

@@ -74,3 +74,71 @@ export interface ApiResponse<T> {
     timestamp: string
   }
 }
+
+// frontend/types/index.ts
+
+// ... существующие типы ...
+
+export interface ClientReport {
+  sessionId: string;
+  testName: string;
+  clientName?: string;
+  completedAt: string;
+  summary?: string;
+  recommendations?: string;
+  answers?: Array<{
+    questionId: string;
+    answer: any;
+    createdAt: string;
+  }>;
+}
+
+export interface Test {
+  id: string;
+  slug: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Question {
+  id: string;
+  text: string;
+  type: 'single-choice' | 'text' | 'scale' | 'multiple-choice';
+  required?: boolean;
+  order?: number;
+  options?: Array<{
+    id: string;
+    text: string;
+    order?: number;
+  }>;
+  settings?: {
+    min?: number;
+    max?: number;
+    minLabel?: string;
+    maxLabel?: string;
+  };
+}
+
+export interface Session {
+  id: string;
+  testId: string;
+  clientName: string;
+  startedAt: string;
+  completedAt?: string;
+  status: 'in-progress' | 'completed';
+}
+
+export interface ApiResponse<T> {
+  data: T;
+  success?: boolean;
+  message?: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: 'psychologist' | 'admin';
+}
