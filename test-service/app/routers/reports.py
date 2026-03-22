@@ -10,6 +10,8 @@ from app.generators.docx_generator import DocxReportGenerator
 from app.clients.session_client import session_client
 from app.clients.auth_client import auth_client 
 from app.config import settings
+from app.services.email_service import EmailService, MockEmailService
+
 
 router = APIRouter(prefix="/public/sessions", tags=["public-sessions"])
 logger = logging.getLogger(__name__)

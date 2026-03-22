@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     # Auth Service
     # Опционально: только для fallback-запроса профиля (GET /auth/me), если нет X-User-Email.
     AUTH_SERVICE_URL: str = "http://auth-service:8000"
+    SESSION_SERVICE_URL: str = "http://session-service:8003"
+
+
     
     # Email (опционально, для реальной отправки)
     SMTP_HOST: str = "smtp.gmail.com"
