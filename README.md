@@ -36,6 +36,39 @@ npm run dev
 | Администратор | admin@profdnk.ru | admin |
 | Психолог | psychologist@example.com | password |
 
+## Доступные URL
+
+### Публичные страницы (для клиентов)
+
+| URL | Описание |
+|-----|----------|
+| http://localhost:3000 | Главная страница |
+| http://localhost:3000/t/demo_test | Демо тест (прохождение теста) |
+| http://localhost:3000/t/proforientation | Тест "Профессиональные склонности" |
+| http://localhost:3000/t/personality | Тест "Личностный опросник" |
+
+### Панель психолога
+
+| URL | Описание |
+|-----|----------|
+| http://localhost:3000/login | Страница входа |
+| http://localhost:3000/dashboard | Дашборд со статистикой |
+| http://localhost:3000/tests | Список тестов |
+| http://localhost:3000/tests/test-1 | Детали теста |
+| http://localhost:3000/tests/new | Создание нового теста |
+| http://localhost:3000/constructor/test-1 | Конструктор теста (редактирование вопросов) |
+| http://localhost:3000/sessions | Список сессий |
+| http://localhost:3000/sessions/sess-1 | Детали сессии |
+| http://localhost:3000/sessions/new | Создание новой сессии |
+
+### Панель администратора
+
+| URL | Описание |
+|-----|----------|
+| http://localhost:3000/admin | Управление психологами |
+| http://localhost:3000/admin/psychologists | Список психологов |
+| http://localhost:3000/admin/psychologists/new | Создание психолога |
+
 ## Структура проекта
 
 ```
