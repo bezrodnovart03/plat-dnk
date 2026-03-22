@@ -95,50 +95,28 @@ export const publicAPI = {
   // Получить тест по slug
   getTestBySlug: async (slug: string) => {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const test = mockDB.tests.find((t: any) => t.slug === slug && t.is_published);
+      if (!test) throw new Error('Test not found');
+      
+      const questions = mockDB.questions
+        .filter((q: any) => q.test_id === test.id)
+        .sort((a: any, b: any) => a.order_index - b.order_index);
+      
       return {
-        id: 'test-1',
-        slug: slug,
-        title: 'Демо тест',
-        description: 'Описание демо теста',
-        questions: [
-          {
-            id: 'q1',
-            test_id: 'test-1',
-            order_index: 0,
-            text: 'Как вас зовут?',
-            type: 'text',
-            required: true,
-            metadata: {}
-          },
-          {
-            id: 'q2',
-            test_id: 'test-1',
-            order_index: 1,
-            text: 'Выберите вариант',
-            type: 'single_choice',
-            required: true,
-            metadata: {
-              options: ['Вариант 1', 'Вариант 2', 'Вариант 3']
-            }
-          },
-          {
-            id: 'q3',
-            test_id: 'test-1',
-            order_index: 2,
-            text: 'Оцените по шкале',
-            type: 'scale',
-            required: false,
-            metadata: {
-              scale_min: 1,
-              scale_max: 10,
-              scale_labels: {
-                '1': 'Совсем не нравится',
-                '10': 'Очень нравится'
-              }
-            }
-          }
-        ]
+        id: test.id,
+        slug: test.slug,
+        title: test.title,
+        description: test.description,
+        questions: questions.map((q: any) => ({
+          id: q.id,
+          test_id: q.test_id,
+          order_index: q.order_index,
+          text: q.text,
+          type: q.type,
+          required: q.required,
+          metadata: q.metadata,
+        })),
       };
     }
     
@@ -147,9 +125,30 @@ export const publicAPI = {
   },
 
   // Создать сессию (начать прохождение)
-  createSession: async (slug: string, clientName: string, clientEmail?: string, clientPhone?: string) => {
+  createSession: async (slug: string, clientName: string, clientEmail?: string, clientPhone?: string, existingSessionId?: string) => {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
       await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Если есть existingSessionId, обновляем существующую сессию
+      if (existingSessionId) {
+        const existingSession = mockDB.sessions.find((s: any) => s.id === existingSessionId);
+        if (existingSession) {
+          existingSession.client_name = clientName;
+          existingSession.client_email = clientEmail || null;
+          existingSession.client_phone = clientPhone || null;
+          
+          const test = mockDB.tests.find((t: any) => t.id === existingSession.test_id);
+          const questions = mockDB.questions.filter((q: any) => q.test_id === existingSession.test_id);
+          
+          return {
+            session_id: existingSession.id,
+            test_title: existingSession.test_title,
+            total_questions: questions.length,
+          };
+        }
+      }
+      
+      // Иначе создаём новую сессию
       const test = mockDB.tests.find((t: any) => t.slug === slug);
       if (!test) throw new Error('Test not found');
       
@@ -159,6 +158,7 @@ export const publicAPI = {
         id: `sess-${Date.now()}`,
         test_id: test.id,
         test_title: test.title,
+        test_slug: test.slug,
         client_name: clientName,
         client_email: clientEmail || null,
         client_phone: clientPhone || null,
@@ -520,12 +520,22 @@ export const testsAPI = {
 export const sessionsAPI = {
   // Получить все сессии
   getAll: async () => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      return mockDB.sessions;
+    }
     const response = await api.get<ApiResponse<Session[]>>('/sessions');
     return response.data;
   },
 
   // Получить сессию по ID
   getById: async (id: string) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const session = mockDB.sessions.find((s: any) => s.id === id);
+      if (!session) throw new Error('Session not found');
+      return session;
+    }
     const response = await api.get<ApiResponse<Session>>(`/sessions/${id}`);
     return response.data;
   },
@@ -553,10 +563,13 @@ export const sessionsAPI = {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
       await new Promise(resolve => setTimeout(resolve, 500));
       const test = mockDB.tests.find((t: any) => t.id === data.testId);
+      if (!test) throw new Error('Test not found');
+      
       const newSession = {
         id: `sess-${Date.now()}`,
         test_id: data.testId,
-        test_title: test?.title || 'Тест',
+        test_title: test.title,
+        test_slug: test.slug,
         client_name: data.clientName,
         client_email: data.clientEmail,
         client_phone: data.clientPhone || null,

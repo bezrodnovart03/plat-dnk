@@ -5,20 +5,21 @@ import { useClientSession } from '@/hooks/use-client-session';
 
 interface StartFormProps {
   slug: string;
+  sessionId?: string;
 }
 
-export function StartForm({ slug }: StartFormProps) {
+export function StartForm({ slug, sessionId }: StartFormProps) {
   const router = useRouter();
 const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const { startSession, isLoading, error } = useClientSession(slug);
+  const { startSession, isLoading, error } = useClientSession(slug, sessionId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (fullName.trim().length < 2 || email.trim().length === 0) return;
     
     try {
-      console.log('Starting session with fullName:', fullName, 'email:', email);
+      console.log('Starting session with fullName:', fullName, 'email:', email, 'sessionId:', sessionId);
       await startSession(fullName.trim(), email.trim());
       console.log('Session started, redirecting...');
     router.push(`/t/${slug}/test`);

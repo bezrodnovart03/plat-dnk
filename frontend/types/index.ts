@@ -13,6 +13,7 @@ export interface User {
 export interface Test {
   id: string
   title: string
+  slug: string
   description?: string
   is_published: boolean
   show_report_to_client: boolean
@@ -49,6 +50,7 @@ export interface Session {
   id: string
   test_id: string
   test_title: string
+  test_slug: string
   client_name: string
   client_email?: string
   client_phone?: string
@@ -80,15 +82,23 @@ export interface ApiResponse<T> {
 }
 
 export interface ClientReport {
-  sessionId: string
-  testName: string
+  sessionId?: string
+  session_id?: string
+  testName?: string
+  test_name?: string
   clientName?: string
-  completedAt: string
+  client_name?: string
+  completedAt?: string
+  completed_at?: string
   summary?: string
   recommendations?: string
   answers?: Array<{
-    questionId: string
-    answer: any
-    createdAt: string
+    questionId?: string
+    question_id?: string
+    question_text?: string
+    answer?: any
+    answer_value?: any
+    createdAt?: string
+    created_at?: string
   }>
 }

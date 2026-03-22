@@ -28,19 +28,7 @@ import {
   restrictToParentElement,
 } from '@dnd-kit/modifiers';
 
-interface Question {
-  id: string;
-  text: string;
-  type: 'single_choice' | 'text' | 'scale';
-  required?: boolean;
-  weight?: number;
-  metadata?: {
-    options?: string[];
-    scale_min?: number;
-    scale_max?: number;
-  };
-  order_index: number;
-}
+import { Question } from '@/types';
 
 interface QuestionListProps {
   testId: string;

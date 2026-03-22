@@ -1,11 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { useTests } from '@/hooks/use-tests';
 import { useSessions } from '@/hooks/use-sessions';
-import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
 import StatsCards from '@/components/dashboard/stats-cards';
 import RecentSessions from '@/components/dashboard/recent-sessions';
 
@@ -20,17 +17,9 @@ export default function DashboardPage() {
 
   return (
     <div className="p-12 max-w-screen-2xl mx-auto">
-      <div className="mb-12 flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Добро пожаловать</h1>
-          <p className="text-xl text-gray-600">Управляйте тестами и просматривайте результаты</p>
-        </div>
-        <Link href="/tests/new">
-          <Button className="bg-[#00e600] hover:bg-[#00cc00] text-white">
-            <Plus className="mr-2 h-4 w-4" />
-            Создать тест
-          </Button>
-        </Link>
+      <div className="mb-12">
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">Добро пожаловать</h1>
+        <p className="text-xl text-gray-600">Управляйте тестами и просматривайте результаты</p>
       </div>
       <StatsCards
         totalTests={totalTests}

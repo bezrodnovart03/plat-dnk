@@ -4,9 +4,9 @@ import { Eye, Calendar } from 'lucide-react';
 
 interface Session {
   id: string;
-  clientName: string;
-  test: { title: string };
-  createdAt: string;
+  client_name: string;
+  test_title: string;
+  started_at: string;
 }
 
 export default function RecentSessions({ sessions }: { sessions: Session[] }) {
@@ -26,11 +26,11 @@ export default function RecentSessions({ sessions }: { sessions: Session[] }) {
           {sessions.map((session) => (
             <div key={session.id} className="flex items-center justify-between p-6 border border-gray-100 rounded-xl hover:border-gray-200 transition-all duration-200 hover:shadow-sm">
               <div className="flex-1">
-                <p className="font-semibold text-gray-900 mb-1">{session.clientName}</p>
-                <p className="text-sm text-gray-600 mb-2">{session.test.title}</p>
+                <p className="font-semibold text-gray-900 mb-1">{session.client_name}</p>
+                <p className="text-sm text-gray-600 mb-2">{session.test_title}</p>
                 <div className="flex items-center text-xs text-gray-500">
                   <Calendar className="h-3 w-3 mr-1" />
-                  {format(new Date(session.createdAt), 'dd.MM.yyyy в HH:mm')}
+                  {format(new Date(session.started_at), 'dd.MM.yyyy в HH:mm')}
                 </div>
               </div>
               <Link

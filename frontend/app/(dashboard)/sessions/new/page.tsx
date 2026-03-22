@@ -5,39 +5,34 @@ import { useRouter } from 'next/navigation';
 import { useTests } from '@/hooks/use-tests';
 import { useCreateSession } from '@/hooks/use-sessions';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Loader2, User, Mail, Phone } from 'lucide-react';
+import { ArrowLeft, Loader2, FileText, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 
 export default function NewSessionPage() {
   const router = useRouter();
   const { data: tests = [], isLoading: testsLoading } = useTests();
   const createSession = useCreateSession();
   
-  const [formData, setFormData] = useState({
-    testId: '',
-    clientName: '',
-    clientEmail: '',
-    clientPhone: '',
-  });
+  const [selectedTestId, setSelectedTestId] = useState('');
+
+  const selectedTest = tests.find((t: any) => t.id === selectedTestId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.testId || !formData.clientName) {
-      toast.error('Выберите тест и введите имя клиента');
+    if (!selectedTestId) {
+      toast.error('Выберите тест');
       return;
     }
 
     try {
       const session = await createSession.mutateAsync({
-        testId: formData.testId,
-        clientName: formData.clientName,
-        clientEmail: formData.clientEmail || undefined,
-        clientPhone: formData.clientPhone || undefined,
+        testId: selectedTestId,
+        clientName: '', // Будет заполнено клиентом при прохождении
       });
       
       toast.success('Сессия создана');
@@ -69,6 +64,9 @@ export default function NewSessionPage() {
       <Card>
         <CardHeader>
           <CardTitle>Новая сессия тестирования</CardTitle>
+          <p className="text-sm text-gray-500 mt-1">
+            Создайте сессию для прохождения теста клиентом. Данные клиента будут запрошены при открытии ссылки.
+          </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -77,8 +75,8 @@ export default function NewSessionPage() {
               <Label htmlFor="test">Тест *</Label>
               <select
                 id="test"
-                value={formData.testId}
-                onChange={(e) => setFormData({ ...formData, testId: e.target.value })}
+                value={selectedTestId}
+                onChange={(e) => setSelectedTestId(e.target.value)}
                 className="w-full h-10 px-3 rounded-md border border-input bg-background"
                 required
               >
@@ -96,52 +94,27 @@ export default function NewSessionPage() {
               )}
             </div>
 
-            {/* Имя клиента */}
-            <div className="space-y-2">
-              <Label htmlFor="clientName">Имя клиента *</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  id="clientName"
-                  placeholder="Иванов Иван"
-                  value={formData.clientName}
-                  onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                  className="pl-10"
-                  required
-                />
+            {/* Информация о выбранном тесте */}
+            {selectedTest && (
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-start gap-3">
+                  <FileText className="h-5 w-5 text-gray-400 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-medium text-gray-900">{selectedTest.title}</p>
+                    {selectedTest.description && (
+                      <p className="text-sm text-gray-600">{selectedTest.description}</p>
+                    )}
+                    <div className="flex items-center text-xs text-gray-500 pt-1">
+                      <Calendar className="h-3.5 w-3.5 mr-1" />
+                      Создан: {format(new Date(selectedTest.created_at), 'dd.MM.yyyy')}
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Вопросов: {selectedTest.questions_count || 0}
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
-
-            {/* Email клиента */}
-            <div className="space-y-2">
-              <Label htmlFor="clientEmail">Email клиента</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  id="clientEmail"
-                  type="email"
-                  placeholder="client@example.com"
-                  value={formData.clientEmail}
-                  onChange={(e) => setFormData({ ...formData, clientEmail: e.target.value })}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            {/* Телефон клиента */}
-            <div className="space-y-2">
-              <Label htmlFor="clientPhone">Телефон клиента</Label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  id="clientPhone"
-                  placeholder="+7 (999) 123-45-67"
-                  value={formData.clientPhone}
-                  onChange={(e) => setFormData({ ...formData, clientPhone: e.target.value })}
-                  className="pl-10"
-                />
-              </div>
-            </div>
+            )}
 
             <div className="flex gap-4 pt-4">
               <Link href="/sessions" className="flex-1">
@@ -152,7 +125,7 @@ export default function NewSessionPage() {
               <Button 
                 type="submit" 
                 className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                disabled={createSession.isPending || !formData.testId || !formData.clientName}
+                disabled={createSession.isPending || !selectedTestId}
               >
                 {createSession.isPending ? (
                   <>

@@ -6,20 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { GripVertical, Edit, Trash2 } from 'lucide-react';
-
-interface Question {
-  id: string;
-  text: string;
-  type: 'single_choice' | 'text' | 'scale';
-  required?: boolean;
-  weight?: number;
-  metadata?: {
-    options?: string[];
-    scale_min?: number;
-    scale_max?: number;
-  };
-  order_index: number;
-}
+import { Question } from '@/types';
 
 interface QuestionItemProps {
   question: Question;
@@ -27,17 +14,21 @@ interface QuestionItemProps {
   onDelete: () => void;
 }
 
-const typeLabels = {
+const typeLabels: Record<string, string> = {
   single_choice: 'Одиночный выбор',
+  multiple_choice: 'Множественный выбор',
   text: 'Текстовый ответ',
   scale: 'Шкала',
+  likert: 'Шкала Лайкерта',
 };
 
-const typeColors = {
+const typeColors: Record<string, 'default' | 'secondary' | 'outline'> = {
   single_choice: 'default',
+  multiple_choice: 'default',
   text: 'secondary',
   scale: 'outline',
-} as const;
+  likert: 'outline',
+};
 
 export function QuestionItem({ question, onEdit, onDelete }: QuestionItemProps) {
   const {

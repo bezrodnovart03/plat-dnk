@@ -1,11 +1,13 @@
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { Users } from 'lucide-react';
+import { Users, User, Mail } from 'lucide-react';
 
 interface Session {
   id: string;
-  clientName: string;
-  createdAt: string;
+  test_title: string;
+  client_name: string;
+  client_email?: string;
+  started_at: string;
   status: string;
 }
 
@@ -33,20 +35,22 @@ export default function SessionsList({ sessions, testId }: { sessions: Session[]
         <table className="w-full">
           <thead className="bg-gray-50/50">
             <tr>
-              <th className="px-8 py-4 text-left text-sm font-medium text-gray-600">Клиент</th>
-              <th className="px-8 py-4 text-left text-sm font-medium text-gray-600">Дата</th>
+              <th className="px-8 py-4 text-left text-sm font-medium text-gray-600">Тест</th>
+              <th className="px-8 py-4 text-left text-sm font-medium text-gray-600">Дата создания</th>
               <th className="px-8 py-4 text-left text-sm font-medium text-gray-600">Статус</th>
-              <th className="px-8 py-4 text-left text-sm font-medium text-gray-600">Действия</th>
+              <th className="px-8 py-4 text-left text-sm font-medium text-gray-600">
+                {sessions.some(s => s.status === 'completed') ? 'Клиент' : 'Действия'}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {sessions.map((session) => (
               <tr key={session.id} className="hover:bg-gray-50/50 transition-colors">
                 <td className="px-8 py-6">
-                  <div className="font-medium text-gray-900">{session.clientName}</div>
+                  <div className="font-medium text-gray-900">{session.test_title}</div>
                 </td>
                 <td className="px-8 py-6 text-sm text-gray-600">
-                  {format(new Date(session.createdAt), 'dd.MM.yyyy HH:mm')}
+                  {format(new Date(session.started_at), 'dd.MM.yyyy HH:mm')}
                 </td>
                 <td className="px-8 py-6">
                   <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
@@ -58,12 +62,27 @@ export default function SessionsList({ sessions, testId }: { sessions: Session[]
                   </span>
                 </td>
                 <td className="px-8 py-6">
-                  <Link
-                    href={`/sessions/${session.id}`}
-                    className="text-blue-600 hover:text-blue-800 font-medium text-sm hover:underline transition-colors"
-                  >
-                    Просмотр
-                  </Link>
+                  {session.status === 'completed' && session.client_name ? (
+                    <div className="space-y-1">
+                      <div className="flex items-center text-sm text-gray-900">
+                        <User className="h-3.5 w-3.5 mr-1.5 text-gray-400" />
+                        {session.client_name}
+                      </div>
+                      {session.client_email && (
+                        <div className="flex items-center text-xs text-gray-500">
+                          <Mail className="h-3 w-3 mr-1.5 text-gray-400" />
+                          {session.client_email}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <Link
+                      href={`/sessions/${session.id}`}
+                      className="text-blue-600 hover:text-blue-800 font-medium text-sm hover:underline transition-colors"
+                    >
+                      Просмотр
+                    </Link>
+                  )}
                 </td>
               </tr>
             ))}

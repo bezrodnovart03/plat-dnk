@@ -2,42 +2,65 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { publicAPI } from '@/lib/api';
+import { publicAPI, sessionsAPI } from '@/lib/api';
 
 interface Answer {
   questionId: string;
   answer: any;
 }
 
-export function useClientSession(slug: string) {
-  const [sessionId, setSessionId] = useState<string | null>(null);
+export function useClientSession(slug: string, existingSessionId?: string) {
+  const [sessionId, setSessionId] = useState<string | null>(existingSessionId || null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Answer[]>([]);
-  const [isTestCompleted, setIsTestCompleted] = useState(false); // ← НОВОЕ
+  const [isTestCompleted, setIsTestCompleted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sessionSlug, setSessionSlug] = useState<string>(slug);
 
-  // ← НОВОЕ: Загрузи sessionId из localStorage при монтировании
+  // Загрузи sessionId из localStorage при монтировании
   useEffect(() => {
+    if (existingSessionId) {
+      setSessionId(existingSessionId);
+      return;
+    }
     const savedSessionId = localStorage.getItem(`session_${slug}`);
     if (savedSessionId) {
       setSessionId(savedSessionId);
     }
-  }, [slug]);
+  }, [slug, existingSessionId]);
 
-  // --- Логика получения теста (из новой ветки) ---
-  const { data: test, isLoading: testLoading } = useQuery({
-    queryKey: ['public', 'test', slug],
-    queryFn: () => publicAPI.getTestBySlug(slug),
-    enabled: !!slug,
+  // Загрузи сессию, чтобы получить slug теста
+  const { data: sessionData } = useQuery({
+    queryKey: ['session', sessionId],
+    queryFn: () => sessionsAPI.getById(sessionId!),
+    enabled: !!sessionId && !!existingSessionId,
   });
 
-  // --- Мутации (из новой ветки) ---
+  // Обновляем slug из сессии
+  useEffect(() => {
+    if (sessionData?.test_slug) {
+      setSessionSlug(sessionData.test_slug);
+    }
+  }, [sessionData]);
+
+  // --- Логика получения теста ---
+  const { data: test, isLoading: testLoading } = useQuery({
+    queryKey: ['public', 'test', sessionSlug],
+    queryFn: () => publicAPI.getTestBySlug(sessionSlug),
+    enabled: !!sessionSlug,
+  });
+
+  // --- Мутации ---
   const createSessionMutation = useMutation({
     mutationFn: ({ clientName, clientEmail, clientPhone }: { clientName: string; clientEmail?: string; clientPhone?: string }) =>
-      publicAPI.createSession(slug, clientName, clientEmail, clientPhone),
+      publicAPI.createSession(slug, clientName, clientEmail, clientPhone, existingSessionId),
     onSuccess: (data) => {
       setSessionId(data.session_id);
-      // Сохрани sessionId в localStorage
       localStorage.setItem(`session_${slug}`, data.session_id);
+      setError(null);
+    },
+    onError: (err: any) => {
+      setError(err?.message || 'Ошибка при создании сессии');
     },
   });
 
@@ -95,6 +118,7 @@ export function useClientSession(slug: string) {
     startSession,
     submitAnswer,
     completeSession,
+    error,
     isLoading:
       testLoading ||
       createSessionMutation.isPending ||

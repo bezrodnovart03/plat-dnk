@@ -1,12 +1,25 @@
-// frontend/app/t/[slug]/page.tsx
+'use client';
+
 import { StartForm } from '@/components/client/start-form';
+import { usePublicTest } from '@/hooks/use-client-test';
+import { Loader2 } from 'lucide-react';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function ClientTestPage({ params }: PageProps) {
-  const { slug } = await params;
+export default function ClientTestPage({ params, searchParams }: PageProps) {
+  const { slug, sessionId } = useParamsAndSearchParams({ params, searchParams });
+  const { data: test, isLoading } = usePublicTest(slug);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#00e600]/5 via-white to-[#00e600]/10 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#00e600]" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#00e600]/5 via-white to-[#00e600]/10">
@@ -26,20 +39,20 @@ export default async function ClientTestPage({ params }: PageProps) {
           {/* Title Section */}
           <div className="text-center mb-12 max-w-2xl">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Профориентационный тест
+              {test?.title || 'Тест'}
             </h2>
             <p className="text-xl text-gray-600 mb-2">
-              Пройдите тест, чтобы определить подходящие вам направления
+              {test?.description || 'Пройдите тест, чтобы узнать результаты'}
             </p>
             <p className="text-sm text-gray-500">
-              Займет около 10-15 минут вашего времени
+              {test?.questions?.length ? `Вопросов: ${test.questions.length}` : ''}
             </p>
           </div>
 
           {/* Form Card */}
           <div className="w-full max-w-md">
             <div className="bg-white rounded-2xl border border-gray-200/50 p-8 shadow-sm hover:shadow-md transition-all duration-200">
-              <StartForm slug={slug} />
+              <StartForm slug={slug} sessionId={sessionId} />
             </div>
           </div>
         </div>
@@ -54,4 +67,20 @@ export default async function ClientTestPage({ params }: PageProps) {
     </div>
   );
 }
+
+// Хелпер для работы с params и searchParams
+function useParamsAndSearchParams({ params, searchParams }: PageProps) {
+  const [resolved, setResolved] = React.useState<{ slug: string; sessionId?: string }>({ slug: '' });
+  
+  React.useEffect(() => {
+    Promise.all([params, searchParams]).then(([p, sp]) => {
+      const sessionId = typeof sp.session === 'string' ? sp.session : undefined;
+      setResolved({ slug: p.slug, sessionId });
+    });
+  }, [params, searchParams]);
+  
+  return resolved;
+}
+
+import React from 'react';
 

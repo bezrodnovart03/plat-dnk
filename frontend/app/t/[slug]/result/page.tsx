@@ -63,8 +63,15 @@ export default function ResultPage() {
           <div className="space-y-6">
             <div className="p-4 bg-indigo-50 rounded-xl">
               <p className="text-sm text-gray-600">Название теста</p>
-              <p className="font-semibold text-gray-900">{report.testName}</p>
+              <p className="font-semibold text-gray-900">{report.test_name || report.testName}</p>
             </div>
+
+            {report.client_name && (
+              <div className="p-4 bg-green-50 rounded-xl">
+                <p className="text-sm text-gray-600">Клиент</p>
+                <p className="font-semibold text-gray-900">{report.client_name}</p>
+              </div>
+            )}
 
             {report.summary && (
               <div className="p-6 bg-gray-50 rounded-xl">
@@ -77,6 +84,22 @@ export default function ResultPage() {
               <div className="p-6 bg-blue-50 rounded-xl">
                 <h3 className="font-semibold text-gray-900 mb-3">Рекомендации</h3>
                 <p className="text-gray-700 whitespace-pre-line">{report.recommendations}</p>
+              </div>
+            )}
+
+            {report.answers && report.answers.length > 0 && (
+              <div className="p-6 bg-white border rounded-xl">
+                <h3 className="font-semibold text-gray-900 mb-4">Ваши ответы</h3>
+                <div className="space-y-4">
+                  {report.answers.map((answer: any, idx: number) => (
+                    <div key={idx} className="p-4 bg-gray-50 rounded-lg">
+                      <p className="font-medium text-gray-900">{idx + 1}. {answer.question_text || 'Вопрос'}</p>
+                      <p className="text-gray-700 mt-1">
+                        Ответ: {Array.isArray(answer.answer) ? answer.answer.join(', ') : String(answer.answer || answer.answer_value || '—')}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

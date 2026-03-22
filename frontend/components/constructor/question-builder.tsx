@@ -38,12 +38,12 @@ interface QuestionFormData {
 }
 
 // Интерфейс для внешних данных (с metadata)
-interface Question {
+interface QuestionForm {
   id?: string;
   text: string;
   type: 'single_choice' | 'text' | 'scale';
   required?: boolean;
-  weight?: number; // Вес вопроса (0-100)
+  weight?: number;
   metadata?: {
     options?: string[];
     scale_min?: number;
@@ -54,7 +54,7 @@ interface Question {
 
 interface QuestionBuilderProps {
   testId: string;
-  editingQuestion?: Question | null;
+  editingQuestion?: QuestionForm | null;
   onClose: () => void;
 }
 
