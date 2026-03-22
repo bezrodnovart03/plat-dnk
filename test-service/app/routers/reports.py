@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 import logging
@@ -6,11 +7,11 @@ import logging
 from app.database import get_db
 from app.dependencies import get_current_psychologist_id
 from app.generators.docx_generator import DocxReportGenerator
-from app.services.email_service import EmailService, MockEmailService
-from app.clients.auth_client import auth_client
+from app.clients.session_client import session_client
+from app.clients.auth_client import auth_client 
 from app.config import settings
 
-router = APIRouter(prefix="/reports", tags=["reports"])
+router = APIRouter(prefix="/public/sessions", tags=["public-sessions"])
 logger = logging.getLogger(__name__)
 
 # Выбираем email сервис (в зависимости от настроек)
@@ -24,6 +25,96 @@ if settings.SMTP_USER and settings.SMTP_PASSWORD:
 else:
     logger.warning("Using mock email service (no SMTP credentials)")
     email_service = MockEmailService()
+
+@router.get("/session/{session_id}/professional")
+async def download_professional_report(
+    session_id: UUID,
+    request: Request,
+    psychologist_id: UUID = Depends(get_current_psychologist_id),
+    db: AsyncSession = Depends(get_db),
+):
+    token = request.headers.get("Authorization", "").strip()
+    if not token.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing authorization token")
+
+    auth_header = token
+    x_user_id = str(psychologist_id)
+
+    # 1. Получаем детали сессии из session-service
+    session_json = await session_client.get_session_detail(session_id, auth_header, x_user_id)
+    if not session_json:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if session_json["test_id"] is None:
+        raise HTTPException(status_code=500, detail="Session has no test_id")
+
+    test_id = UUID(str(session_json["test_id"]))
+
+    # 2. Получаем тест (с вопросами) из test-service (локально через crud или через HTTP)
+    # Здесь у тебя уже есть TestCRUD и QuestionCRUD, можно собрать dict локально:
+    from app import crud as test_crud
+
+    test = await test_crud.TestCRUD.get_by_id(db, test_id, psychologist_id)
+    if not test:
+        raise HTTPException(status_code=404, detail="Test not found")
+
+    questions = await test_crud.QuestionCRUD.get_by_test(db, test_id)
+    test_data = {
+        "id": str(test.id),
+        "title": test.title,
+        "description": test.description,
+        "questions": [
+            {
+                "id": str(q.id),
+                "order_index": q.order_index,
+                "type": q.type,
+                "text": q.text,
+                "required": q.required,
+                "metadata": q.question_metadata,
+            }
+            for q in questions
+        ],
+    }
+
+    # 3. Собираем ответы
+    answers_data = []
+    answers_map = {UUID(str(a["question_id"])): a for a in session_json["answers"]}
+    for q in questions:
+        a = answers_map.get(q.id)
+        if not a:
+            continue
+        answers_data.append(
+            {
+                "order_index": q.order_index,
+                "question_text": q.text,
+                "answer_value": a["answer_value"],
+            }
+        )
+
+    # 4. Психолог (для шапки отчёта)
+    psychologist = await auth_client.get_psychologist_by_id(psychologist_id, auth_header)
+    if not psychologist:
+        psychologist = {"full_name": "Психолог", "email": ""}
+
+    # 5. Генерация DOCX
+    try:
+        report_buffer = await DocxReportGenerator.generate_report(
+            test=test_data,
+            session=session_json,
+            answers=answers_data,
+            psychologist=psychologist,
+        )
+    except Exception as e:
+        logger.error(f"Failed to generate report: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate report")
+
+    filename = f"report_{session_json.get('client_name','client')}_{test.title}.docx"
+
+    return StreamingResponse(
+        report_buffer,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 @router.post("/session/{session_id}/send-to-psychologist")
 async def send_report_to_psychologist(
