@@ -17,7 +17,7 @@ export default function Header() {
     <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 px-8 py-4">
       <div className="flex justify-between items-center max-w-screen-2xl mx-auto">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+          <div className="w-8 h-8 bg-gradient-to-br from-[#00e600] to-[#00cc00] rounded-xl flex items-center justify-center">
             <span className="text-white font-bold text-sm">П</span>
           </div>
           <h1 className="text-lg font-semibold text-gray-900">ПрофДНК</h1>

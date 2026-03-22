@@ -63,7 +63,7 @@ export default function TestCard({ test }: TestCardProps) {
           </Link>
           <Link
             href={`/constructor/${test.id}`}
-            className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all duration-200"
+            className="p-2 text-gray-400 hover:text-[#00e600] hover:bg-green-50 rounded-xl transition-all duration-200"
             title="Редактировать"
           >
             <Edit className="h-5 w-5" />

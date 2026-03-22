@@ -10,7 +10,7 @@ export default function StatsCards({ totalTests, totalSessions, avgCompletion }:
   const stats = [
     { label: 'Тестов', value: totalTests, icon: FileText, color: 'text-blue-600' },
     { label: 'Прохождений', value: totalSessions, icon: Users, color: 'text-green-600' },
-    { label: 'Средняя полнота', value: `${avgCompletion}%`, icon: BarChart3, color: 'text-purple-600' },
+    { label: 'Средняя полнота', value: `${avgCompletion}%`, icon: BarChart3, color: 'text-[#00e600]' },
   ];
 
   return (
