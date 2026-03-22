@@ -1,77 +1,161 @@
+version: '3.8'
+
 networks:
-  dev:
+  app_network:
+    driver: bridge
+  db_network:
+    driver: bridge
+
 services:
+  # -----------------------------
+  # PostgreSQL
+  # -----------------------------
+  psql:
+    image: postgres:16
+    container_name: devops_db_container
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5438:5432"
+    networks:
+      - db_network
+      - app_network
+
+  # -----------------------------
+  # PgAdmin
+  # -----------------------------
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    env_file:
+      - .env
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "${PGADMIN_PORT}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - psql
+    networks:
+      - db_network
+
+  # -----------------------------
+  # Gateway
+  # -----------------------------
+    gateway:
+      build:
+        context: ./gateway
+        dockerfile: Dockerfile
+    container_name: devops_gateway_container
+    restart: always
+    volumes:
+      - ./gateway/app:/app
+    ports:
+      - "8001:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@psql:5432/${POSTGRES_DB}
+      AUTH_SERVICE_URL: http://auth-service:8000
+      TEST_SERVICE_URL: http://test-service:8000
+      SESSION_SERVICE_URL: http://session-service:8000
+    networks:
+      - app_network
+      - db_network
+    depends_on:
+      - psql
+      - auth-service
+      - test-service
+      - session-service
+
+  # -----------------------------
+  # Auth Service
+  # -----------------------------
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: devops_auth_service_container
+    restart: always
+    volumes:
+      - ./auth-service/app:/app
+    ports:
+      - "8002:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@psql:5432/${POSTGRES_DB}
+    networks:
+      - app_network
+      - db_network
+    depends_on:
+      - psql
+
+  # -----------------------------
+  # Test Service
+  # -----------------------------
+  test-service:
+    build:
+      context: ./test-service
+      dockerfile: Dockerfile
+    container_name: devops_test_service_container
+    restart: always
+    volumes:
+      - ./test-service/app:/app
+    ports:
+      - "8003:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@psql:5432/${POSTGRES_DB}
+      SESSION_SERVICE_URL: http://session-service:8000
+      AUTH_SERVICE_URL: http://auth-service:8000
+    networks:
+      - app_network
+      - db_network
+    depends_on:
+      - psql
+
+  # -----------------------------
+  # Session Service
+  # -----------------------------
+  session-service:
+    build:
+      context: ./session-service
+      dockerfile: Dockerfile
+    container_name: devops_session_service_container
+    restart: always
+    volumes:
+      - ./session-service/app:/app
+    ports:
+      - "8004:8000"
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:8000
+      TEST_SERVICE_URL: http://test-service:8000
+    networks:
+      - app_network
+      - db_network
+    depends_on:
+      - psql
+
+  # -----------------------------
+  # Nginx Reverse Proxy
+  # -----------------------------
   nginx:
     image: nginx:stable-alpine
+    container_name: devops_nginx_container
     ports:
       - "80:80"
     volumes:
-      - './nginx.conf:/etc/nginx/nginx.conf'
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
     depends_on:
-    - psql
-    - auth-service
-    - gateway
-    - test-service
-    - session-service
-    - report-service
-    - frontend
+      - gateway
+    networks:
+      - app_network
 
-
-  gateway:
-    build: app
-    # Запускаем тестовый сервер
-    command: uvicorn app.main:app --host 0.0.0.0
-    # куда будут помещены данные из каталога app
-    volumes:
-      - .:/app
-    # Открываем порт 8000 внутри и снаружи
-    ports:
-      - 8000:8001
-  auth-service:
-    build: app
-    # Запускаем тестовый сервер
-    command: uvicorn app.main:app --host 0.0.0.0
-    # куда будут помещены данные из каталога app
-    volumes:
-      - .:/app
-    # Открываем порт 8000 внутри и снаружи
-    ports:
-      - 8000:8000
-
-  frontend:
-    image: frontend
-    build:
-      context: ./frontend
-    ports:
-    - "80:80"
-    environment:
-      BACKEND_HOST: backend
-      BACKEND_PORT: 8080
-
-
-  psql:
-    image: postgres:16
-    command: postgres -c config_file=/postgresql.conf
-    environment:
-      PGDATA: HACKHATON_2026
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    volumes: 
-      db-data: /var/lib/postgresql/data
-
-    ports:
-      - "5432:5438"
-  pgadmin:
-    container_name: pgadmin
-    image: dpage/pgadmin4
-    environment:
-      PGADMIN_DEFAULT_EMAIL: dudon@noemail.com
-      PGADMIN_DEFAULT_PASSWORD: root
-    ports:
-      - "5050:80"
+volumes:
+  db_data:
+  pgadmin_data:

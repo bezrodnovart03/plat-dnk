@@ -2,9 +2,16 @@ FROM python:3.12.8
 
 WORKDIR /app
 
-COPY requirements.txt requirements.txt
+# Устанавливаем зависимости
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN pip install -r requirements.txt
+# Копируем весь код
+COPY . .
 
-CMD [ "python", "main.py"]
+# Открываем порт сервиса
+EXPOSE 8002
+
+# Запускаем uvicorn
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8002"]
 

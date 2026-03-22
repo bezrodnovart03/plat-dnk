@@ -8,18 +8,37 @@ SECRET_KEY = "SUPER_SECRET_KEY_FOR_HACKATHON"
 ALGORITHM = "HS256"
 
 #  Локально (для теста) - 127.0.0.1
+# SERVICES = {
+#     "auth": "http://auth-service:8001",
+#     "tests": "http://test-service:8002",
+#     "sessions": "http://session-service:8003",
+#     "reports": "http://report-service:8004"
+# }
+
 SERVICES = {
-    "auth": "http://auth-service:8001",
-    "tests": "http://test-service:8002",
-    "sessions": "http://session-service:8003",
-    "reports": "http://report-service:8004"
+    "auth": "http://127.0.0.1:8002",  # ЗАМЕНИЛ auth-service на 127.0.0.1
+    "tests": "http://127.0.0.1:8003",
+    "sessions": "http://127.0.0.1:8004",
+    "reports": "http://127.0.0.1:8005"
 }
 
-# Список путей, куда МОЖНО без токена
 PUBLIC_PATHS = [
-    "/api/auth/login",
-    "/api/public/"
+    "/api/auth/auth/login", # Gateway(/api/auth) + Auth-Service(/auth/login)
+    "/api/auth/auth/users", 
+    "/api/public/",
+    "/docs",
+    "/openapi.json",
+    "/redoc",
+    "/favicon.ico"
 ]
+
+# Список путей, куда МОЖНО без токена
+# PUBLIC_PATHS = [
+#     "/api/auth/login",
+#     "/api/public/"
+# ]
+
+
 
 @app.middleware("http")
 async def auth_filter(request: Request, call_next):
@@ -35,7 +54,7 @@ async def auth_filter(request: Request, call_next):
     # Если путь защищенный ищем заголовок Authorization
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
-        return Response(content="Нужен токен (Authorization: Bearer ...)", status_code=401)
+        return Response(content="Plise use coin broooooo (Authorization: Bearer ...)", status_code=401)
 
     token = auth_header.split(" ")[1]
 
@@ -46,7 +65,7 @@ async def auth_filter(request: Request, call_next):
         request.state.user_id = payload.get("sub")
         request.state.user_role = payload.get("role")
     except JWTError:
-        return Response(content="Токен не валиден или просрочен", status_code=401)
+        return Response(content="Fu coin broooo, you bad", status_code=401)
 
     # Если всё ок, то заебумба
     return await call_next(request)
