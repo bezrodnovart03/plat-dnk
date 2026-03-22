@@ -83,13 +83,24 @@ export function QuestionBuilder({ testId, editingQuestion, onClose }: QuestionBu
     }
 
     try {
-      const questionData = {
+      // Формируем данные вопроса с metadata обёрткой
+      const questionData: any = {
         text: question.text.trim(),
         type: question.type,
         required: question.required,
-        ...(question.type === 'single_choice' && { options: question.options?.filter(opt => opt.trim()) }),
-        ...(question.type === 'scale' && { min: question.min, max: question.max }),
+        metadata: {},
       };
+
+      // Добавляем options в metadata для single_choice
+      if (question.type === 'single_choice') {
+        questionData.metadata.options = question.options?.filter(opt => opt.trim()) || [];
+      }
+
+      // Добавляем scale_min/scale_max в metadata для scale
+      if (question.type === 'scale') {
+        questionData.metadata.scale_min = question.min || 1;
+        questionData.metadata.scale_max = question.max || 5;
+      }
 
       if (editingQuestion?.id) {
         await updateQuestion.mutateAsync({

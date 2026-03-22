@@ -2,11 +2,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { sessionsAPI } from '@/lib/api';
 
-// Получить все сессии (опционально по тесту)
-export function useSessions(testId?: string) {
+// Получить все сессии
+export function useSessions() {
   return useQuery({
-    queryKey: ['sessions', testId],
-    queryFn: () => sessionsAPI.getAll(testId),
+    queryKey: ['sessions'],
+    queryFn: () => sessionsAPI.getAll(),
   });
 }
 
@@ -19,11 +19,32 @@ export function useSession(sessionId: string) {
   });
 }
 
-// Получить сессии по тесту (альтернативный хук)
+// Получить сессии по тесту
 export function useSessionsByTest(testId: string) {
   return useQuery({
     queryKey: ['sessions', 'test', testId],
-    queryFn: () => sessionsAPI.getByTestId(testId),
+    queryFn: () => sessionsAPI.getByTest(testId),
     enabled: !!testId,
+  });
+}
+
+// Получить ответы сессии
+export function useSessionAnswers(sessionId: string) {
+  return useQuery({
+    queryKey: ['sessions', sessionId, 'answers'],
+    queryFn: () => sessionsAPI.getAnswers(sessionId),
+    enabled: !!sessionId,
+  });
+}
+
+// Удалить сессию
+export function useDeleteSession() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => sessionsAPI.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+    },
   });
 }

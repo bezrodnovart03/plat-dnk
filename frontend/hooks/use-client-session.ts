@@ -32,12 +32,12 @@ export function useClientSession(slug: string) {
 
   // --- Мутации (из новой ветки) ---
   const createSessionMutation = useMutation({
-    mutationFn: ({ clientName, clientEmail }: { clientName: string; clientEmail?: string }) =>
-      publicAPI.createSession(slug, clientName, clientEmail),
+    mutationFn: ({ clientName, clientEmail, clientPhone }: { clientName: string; clientEmail?: string; clientPhone?: string }) =>
+      publicAPI.createSession(slug, clientName, clientEmail, clientPhone),
     onSuccess: (data) => {
-      setSessionId(data.data.session_id);
-      // ← НОВОЕ: Сохрани sessionId в localStorage
-      localStorage.setItem(`session_${slug}`, data.data.session_id);
+      setSessionId(data.session_id);
+      // Сохрани sessionId в localStorage
+      localStorage.setItem(`session_${slug}`, data.session_id);
     },
   });
 
@@ -62,8 +62,8 @@ export function useClientSession(slug: string) {
   });
 
   // --- Функции управления (Объединенные) ---
-  const startSession = async (clientName: string, clientEmail?: string) => {
-    const result = await createSessionMutation.mutateAsync({ clientName, clientEmail });
+  const startSession = async (clientName: string, clientEmail?: string, clientPhone?: string) => {
+    const result = await createSessionMutation.mutateAsync({ clientName, clientEmail, clientPhone });
     return result;
   };
 
@@ -77,7 +77,7 @@ export function useClientSession(slug: string) {
   };
 
   // --- Вычисляемые данные ---
-  const questions = test?.data?.questions || [];
+  const questions = test?.questions || [];
   const totalQuestions = questions.length;
   const isCompleted = isTestCompleted || currentQuestionIndex >= totalQuestions; // ← ИЗМЕНИЛ
   const progress = totalQuestions > 0 ? (currentQuestionIndex / totalQuestions) * 100 : 0;
