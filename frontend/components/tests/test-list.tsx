@@ -5,9 +5,9 @@ import { FileText } from 'lucide-react';
 interface Test {
   id: string;
   title: string;
-  description: string;
-  isPublished: boolean;
-  sessionsCount?: number;
+  description?: string;
+  is_published: boolean;
+  sessions_count?: number;
 }
 
 export default function TestList({ tests }: { tests: Test[] }) {
@@ -23,7 +23,7 @@ export default function TestList({ tests }: { tests: Test[] }) {
         </p>
         <Link
           href="/tests/new"
-          className="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-200 hover:shadow-lg"
+          className="inline-flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-200 hover:shadow-lg"
         >
           <span>+</span>
           <span>Создать тест</span>

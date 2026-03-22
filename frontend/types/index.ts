@@ -40,6 +40,7 @@ export interface Question {
   type: QuestionType
   text: string
   required: boolean
+  weight: number // Вес вопроса (0-100)
   metadata: Record<string, any>
 }
 

@@ -10,7 +10,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -26,14 +25,31 @@ import { ScaleEditor } from './question-types/scale-editor';
 import { TextQuestion } from './question-types/text-question';
 import { toast } from 'sonner';
 
-interface Question {
+// Внутренний интерфейс для редактирования
+interface QuestionFormData {
   id?: string;
   text: string;
   type: 'single_choice' | 'text' | 'scale';
   required: boolean;
-  options?: string[];
-  min?: number;
-  max?: number;
+  weight: number; // Вес вопроса (0-100)
+  options: string[];
+  min: number;
+  max: number;
+}
+
+// Интерфейс для внешних данных (с metadata)
+interface Question {
+  id?: string;
+  text: string;
+  type: 'single_choice' | 'text' | 'scale';
+  required?: boolean;
+  weight?: number; // Вес вопроса (0-100)
+  metadata?: {
+    options?: string[];
+    scale_min?: number;
+    scale_max?: number;
+  };
+  order_index?: number;
 }
 
 interface QuestionBuilderProps {
@@ -45,10 +61,11 @@ interface QuestionBuilderProps {
 type QuestionType = 'single_choice' | 'text' | 'scale';
 
 export function QuestionBuilder({ testId, editingQuestion, onClose }: QuestionBuilderProps) {
-  const [question, setQuestion] = useState<Question>({
+  const [question, setQuestion] = useState<QuestionFormData>({
     text: '',
     type: 'single_choice',
     required: false,
+    weight: 0, // Будет рассчитано автоматически
     options: [''],
     min: 1,
     max: 5,
@@ -60,10 +77,25 @@ export function QuestionBuilder({ testId, editingQuestion, onClose }: QuestionBu
   useEffect(() => {
     if (editingQuestion) {
       setQuestion({
-        ...editingQuestion,
-        options: editingQuestion.options || [''],
-        min: editingQuestion.min || 1,
-        max: editingQuestion.max || 5,
+        id: editingQuestion.id,
+        text: editingQuestion.text,
+        type: editingQuestion.type,
+        required: editingQuestion.required || false,
+        weight: editingQuestion.weight || 0,
+        options: editingQuestion.metadata?.options || [''],
+        min: editingQuestion.metadata?.scale_min || 1,
+        max: editingQuestion.metadata?.scale_max || 5,
+      });
+    } else {
+      // Сброс при создании нового вопроса
+      setQuestion({
+        text: '',
+        type: 'single_choice',
+        required: false,
+        weight: 0,
+        options: [''],
+        min: 1,
+        max: 5,
       });
     }
   }, [editingQuestion]);
@@ -75,8 +107,8 @@ export function QuestionBuilder({ testId, editingQuestion, onClose }: QuestionBu
     }
 
     if (question.type === 'single_choice') {
-      const validOptions = question.options?.filter(opt => opt.trim());
-      if (!validOptions || validOptions.length === 0) {
+      const validOptions = question.options.filter((opt: string) => typeof opt === 'string' && opt.trim());
+      if (validOptions.length === 0) {
         toast.error('Добавьте хотя бы один вариант ответа');
         return;
       }
@@ -88,18 +120,19 @@ export function QuestionBuilder({ testId, editingQuestion, onClose }: QuestionBu
         text: question.text.trim(),
         type: question.type,
         required: question.required,
+        weight: question.weight,
         metadata: {},
       };
 
       // Добавляем options в metadata для single_choice
       if (question.type === 'single_choice') {
-        questionData.metadata.options = question.options?.filter(opt => opt.trim()) || [];
+        questionData.metadata.options = question.options.filter((opt: string) => typeof opt === 'string' && opt.trim());
       }
 
       // Добавляем scale_min/scale_max в metadata для scale
       if (question.type === 'scale') {
-        questionData.metadata.scale_min = question.min || 1;
-        questionData.metadata.scale_max = question.max || 5;
+        questionData.metadata.scale_min = question.min;
+        questionData.metadata.scale_max = question.max;
       }
 
       if (editingQuestion?.id) {
@@ -119,13 +152,14 @@ export function QuestionBuilder({ testId, editingQuestion, onClose }: QuestionBu
     }
   };
 
-  const handleTypeChange = (type: QuestionType) => {
+  const handleTypeChange = (type: string) => {
+    const qType = type as QuestionType;
     setQuestion({
       ...question,
-      type,
-      options: type === 'single_choice' ? [''] : undefined,
-      min: type === 'scale' ? 1 : undefined,
-      max: type === 'scale' ? 5 : undefined,
+      type: qType,
+      options: qType === 'single_choice' ? [''] : question.options,
+      min: qType === 'scale' ? 1 : question.min,
+      max: qType === 'scale' ? 5 : question.max,
     });
   };
 
@@ -134,15 +168,15 @@ export function QuestionBuilder({ testId, editingQuestion, onClose }: QuestionBu
       case 'single_choice':
         return (
           <SingleChoiceEditor
-            options={question.options || ['']}
+            options={question.options}
             onChange={(options) => setQuestion({ ...question, options })}
           />
         );
       case 'scale':
         return (
           <ScaleEditor
-            min={question.min || 1}
-            max={question.max || 5}
+            min={question.min}
+            max={question.max}
             onChange={(min, max) => setQuestion({ ...question, min, max })}
           />
         );
@@ -168,7 +202,14 @@ export function QuestionBuilder({ testId, editingQuestion, onClose }: QuestionBu
             <Label>Тип вопроса *</Label>
             <Select value={question.type} onValueChange={handleTypeChange}>
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue 
+                  placeholder="Выберите тип вопроса"
+                  options={[
+                    { value: 'single_choice', label: 'Одиночный выбор' },
+                    { value: 'text', label: 'Текстовый ответ' },
+                    { value: 'scale', label: 'Шкала' },
+                  ]}
+                />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="single_choice">Одиночный выбор</SelectItem>
@@ -187,6 +228,26 @@ export function QuestionBuilder({ testId, editingQuestion, onClose }: QuestionBu
               placeholder="Введите текст вопроса"
               rows={3}
             />
+          </div>
+
+          {/* Вес вопроса */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Вес вопроса (%)</Label>
+              <span className="text-sm text-muted-foreground">{question.weight.toFixed(1)}%</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="0.1"
+              value={question.weight}
+              onChange={(e) => setQuestion({ ...question, weight: parseFloat(e.target.value) })}
+              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            />
+            <p className="text-xs text-muted-foreground">
+              Влияет на расчёт итогового результата. При 0% — авто-распределение.
+            </p>
           </div>
 
           {/* Обязательность */}

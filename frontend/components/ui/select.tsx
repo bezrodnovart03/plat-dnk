@@ -4,61 +4,95 @@ import * as React from "react"
 import { ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+interface SelectContextValue {
+  value?: string
+  onValueChange?: (value: string) => void
+  open: boolean
+  setOpen: (open: boolean) => void
+}
+
+const SelectContext = React.createContext<SelectContextValue | undefined>(undefined)
+
+const useSelect = () => {
+  const context = React.useContext(SelectContext)
+  if (!context) {
+    throw new Error("Select components must be used within a Select")
+  }
+  return context
+}
+
 const Select = ({ value, onValueChange, children }: { value?: string; onValueChange?: (value: string) => void; children: React.ReactNode }) => {
   const [open, setOpen] = React.useState(false)
   
   return (
-    <div className="relative">
-      <div
-        onClick={() => setOpen(!open)}
-        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background cursor-pointer"
-      >
-        <span>{value || "Выберите..."}</span>
-        <ChevronDown className="h-4 w-4 opacity-50" />
+    <SelectContext.Provider value={{ value, onValueChange, open, setOpen }}>
+      <div className="relative">
+        {children}
       </div>
-      {open && (
-        <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg">
-          {React.Children.map(children, child => {
-            if (React.isValidElement(child) && child.type === SelectItem) {
-              return React.cloneElement(child, { 
-                onSelect: () => {
-                  onValueChange?.(child.props.value)
-                  setOpen(false)
-                }
-              })
-            }
-            return child
-          })}
-        </div>
-      )}
-    </div>
+    </SelectContext.Provider>
   )
 }
 
 const SelectTrigger = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, children, ...props }, ref) => (
-  <div ref={ref} className={cn("flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background", className)} {...props}>
-    {children}
-  </div>
-))
+  HTMLButtonElement,
+  React.ButtonHTMLAttributes<HTMLButtonElement>
+>(({ className, children, ...props }, ref) => {
+  const { open, setOpen, value } = useSelect()
+  
+  return (
+    <button
+      ref={ref}
+      type="button"
+      onClick={() => setOpen(!open)}
+      className={cn("flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background cursor-pointer", className)}
+      {...props}
+    >
+      {children}
+      <ChevronDown className={cn("h-4 w-4 opacity-50 transition-transform", open && "rotate-180")} />
+    </button>
+  )
+})
 SelectTrigger.displayName = "SelectTrigger"
 
-const SelectValue = ({ placeholder }: { placeholder?: string }) => {
-  return <span>{placeholder}</span>
+const SelectValue = ({ placeholder, options }: { placeholder?: string; options?: { value: string; label: string }[] }) => {
+  const { value } = useSelect()
+  const selectedOption = options?.find(opt => opt.value === value)
+  const displayValue = selectedOption?.label || value
+  return <span className={cn(!displayValue && "text-muted-foreground")}>{displayValue || placeholder}</span>
 }
 
 const SelectContent = ({ children }: { children: React.ReactNode }) => {
-  return <>{children}</>
+  const { open, setOpen } = useSelect()
+  
+  if (!open) return null
+  
+  return (
+    <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg py-1">
+      {children}
+    </div>
+  )
 }
 
-const SelectItem = ({ value, children, onSelect }: { value: string; children: React.ReactNode; onSelect?: () => void }) => {
+const SelectItem = ({ value, children }: { value: string; children: React.ReactNode }) => {
+  const { value: selectedValue, onValueChange, setOpen } = useSelect()
+  const isSelected = selectedValue === value
+  
   return (
     <div
-      onClick={onSelect}
-      className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+      onClick={() => {
+        onValueChange?.(value)
+        setOpen(false)
+      }}
+      className={cn(
+        "relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+        isSelected && "bg-accent"
+      )}
     >
+      {isSelected && (
+        <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><polyline points="20 6 9 17 4 12"/></svg>
+        </span>
+      )}
       {children}
     </div>
   )

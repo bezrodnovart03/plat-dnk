@@ -12,9 +12,13 @@ interface Question {
   text: string;
   type: 'single_choice' | 'text' | 'scale';
   required?: boolean;
-  options?: string[];
-  min?: number;
-  max?: number;
+  weight?: number;
+  metadata?: {
+    options?: string[];
+    scale_min?: number;
+    scale_max?: number;
+  };
+  order_index: number;
 }
 
 interface QuestionItemProps {
@@ -53,7 +57,7 @@ export function QuestionItem({ question, onEdit, onDelete }: QuestionItemProps) 
 
   const getScaleLabel = () => {
     if (question.type === 'scale') {
-      return `${question.min || 1} - ${question.max || 5}`;
+      return `${question.metadata?.scale_min || 1} - ${question.metadata?.scale_max || 5}`;
     }
     return '';
   };
@@ -86,14 +90,19 @@ export function QuestionItem({ question, onEdit, onDelete }: QuestionItemProps) 
                     {getScaleLabel()}
                   </Badge>
                 )}
+                {question.weight !== undefined && question.weight > 0 && (
+                  <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                    Вес: {question.weight.toFixed(1)}%
+                  </Badge>
+                )}
               </div>
               
               <p className="font-medium break-words">{question.text}</p>
               
-              {question.type === 'single_choice' && question.options && question.options.length > 0 && (
+              {question.type === 'single_choice' && question.metadata?.options && Array.isArray(question.metadata.options) && question.metadata.options.length > 0 && (
                 <div className="mt-2 text-sm text-muted-foreground">
                   <span className="font-medium">Варианты:</span>{' '}
-                  {question.options.filter(opt => opt.trim()).join(', ')}
+                  {question.metadata.options.filter((opt: unknown) => typeof opt === 'string' && opt.trim()).join(', ')}
                 </div>
               )}
             </div>

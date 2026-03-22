@@ -68,9 +68,9 @@ export default function ConstructorPage() {
           <CardContent className="py-8">
             <p className="text-center text-muted-foreground">Тест не найден</p>
             <div className="flex justify-center mt-4">
-              <Button onClick={() => router.push('/tests')}>
-                Вернуться к списку
-              </Button>
+              <Link href="/tests">
+                <Button>Вернуться к списку</Button>
+              </Link>
             </div>
           </CardContent>
         </Card>

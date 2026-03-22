@@ -39,7 +39,7 @@ export default function SessionDetail({ session }: SessionDetailProps) {
         </div>
         <button
           onClick={handleDownloadReport}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
         >
           Скачать отчёт (DOCX)
         </button>

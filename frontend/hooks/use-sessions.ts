@@ -48,3 +48,57 @@ export function useDeleteSession() {
     },
   });
 }
+
+// Создать сессию
+export function useCreateSession() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { testId: string; clientName: string; clientEmail?: string; clientPhone?: string }) => 
+      sessionsAPI.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+    },
+  });
+}
+
+// Обновить сессию
+export function useUpdateSession() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<any> }) => 
+      sessionsAPI.update(id, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['sessions', variables.id] });
+    },
+  });
+}
+
+// Отправить ответ
+export function useSubmitAnswer() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ sessionId, questionId, answerValue }: { sessionId: string; questionId: string; answerValue: any }) => 
+      sessionsAPI.submitAnswer(sessionId, { questionId, answerValue }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['sessions', variables.sessionId, 'answers'] });
+      queryClient.invalidateQueries({ queryKey: ['sessions', variables.sessionId] });
+    },
+  });
+}
+
+// Завершить сессию
+export function useCompleteSession() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => sessionsAPI.complete(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['sessions', id] });
+    },
+  });
+}

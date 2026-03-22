@@ -18,7 +18,7 @@ export default function TestsPage() {
         </div>
         <Link
           href="/tests/new"
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-200 hover:shadow-lg flex items-center space-x-2"
+          className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-200 hover:shadow-lg flex items-center space-x-2"
         >
           <span>+</span>
           <span>Создать тест</span>

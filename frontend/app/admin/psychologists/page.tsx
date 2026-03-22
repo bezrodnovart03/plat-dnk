@@ -24,6 +24,16 @@ import { BlockDialog } from '@/components/admin/block-dialog';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
+// Helper function for date formatting
+const formatDate = (date: string | null | undefined) => {
+  if (!date) return null;
+  try {
+    return format(new Date(date), 'dd.MM.yyyy');
+  } catch {
+    return null;
+  }
+};
+
 export default function PsychologistsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'blocked' | 'expired'>(
@@ -184,12 +194,10 @@ export default function PsychologistsPage() {
                     </td>
                     <td className="px-6 py-4">{getStatusBadge(user)}</td>
                     <td className="px-6 py-4">
-                      {user.expires_at ? (
+                      {formatDate(user.expires_at) ? (
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-gray-400" />
-                          <span className="text-sm">
-                            {format(new Date(user.expires_at), 'dd.MM.yyyy', { locale: ru })}
-                          </span>
+                          <span className="text-sm">{formatDate(user.expires_at)}</span>
                         </div>
                       ) : (
                         <span className="text-sm text-gray-400">Бессрочно</span>

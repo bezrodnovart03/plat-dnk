@@ -24,7 +24,7 @@ export default function TestDetailPage() {
         <div className="space-x-2">
           <Link
             href={`/constructor/${test.id}`}
-            className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
+            className="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800"
           >
             Редактировать
           </Link>

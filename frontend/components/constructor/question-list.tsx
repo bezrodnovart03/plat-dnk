@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { useReorderQuestions, useDeleteQuestion } from '@/hooks/use-tests';
+import { useReorderQuestions, useDeleteQuestion, useUpdateQuestion } from '@/hooks/use-tests';
 import { QuestionItem } from './question-item';
 import { QuestionBuilder } from './question-builder';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, Scale } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   DndContext,
   closestCenter,
@@ -32,10 +33,13 @@ interface Question {
   text: string;
   type: 'single_choice' | 'text' | 'scale';
   required?: boolean;
-  options?: string[];
-  min?: number;
-  max?: number;
-  order: number;
+  weight?: number;
+  metadata?: {
+    options?: string[];
+    scale_min?: number;
+    scale_max?: number;
+  };
+  order_index: number;
 }
 
 interface QuestionListProps {
@@ -48,6 +52,7 @@ export function QuestionList({ testId, questions }: QuestionListProps) {
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const reorderQuestions = useReorderQuestions(testId);
   const deleteQuestion = useDeleteQuestion(testId);
+  const updateQuestion = useUpdateQuestion(testId);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -98,17 +103,49 @@ export function QuestionList({ testId, questions }: QuestionListProps) {
     setEditingQuestion(null);
   };
 
-  const sortedQuestions = [...questions].sort((a, b) => a.order - b.order);
+  const handleAutoDistributeWeights = async () => {
+    if (questions.length === 0) return;
+    
+    const weight = 100 / questions.length;
+    
+    try {
+      await Promise.all(
+        questions.map((q) =>
+          updateQuestion.mutateAsync({
+            questionId: q.id,
+            data: { weight: parseFloat(weight.toFixed(2)) }
+          })
+        )
+      );
+      toast.success('Веса распределены равномерно');
+    } catch (error) {
+      toast.error('Ошибка при распределении весов');
+    }
+  };
+
+  const sortedQuestions = [...questions].sort((a, b) => a.order_index - b.order_index);
 
   return (
     <>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Вопросы теста</CardTitle>
-          <Button onClick={() => setShowBuilder(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Добавить вопрос
-          </Button>
+          <CardTitle>Вопросы теста ({questions.length})</CardTitle>
+          <div className="flex gap-2">
+            {questions.length > 0 && (
+              <Button 
+                variant="outline" 
+                onClick={handleAutoDistributeWeights}
+                disabled={updateQuestion.isPending}
+              >
+                <Scale className="mr-2 h-4 w-4" />
+                Авто-веса
+              </Button>
+            )}
+            <Button onClick={() => setShowBuilder(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Добавить вопрос
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {sortedQuestions.length === 0 ? (

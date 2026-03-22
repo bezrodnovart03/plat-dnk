@@ -8,6 +8,7 @@ import {
   ApiResponse,
   User 
 } from '@/types';
+import { mockDB } from '@/mocks';
 
 // Базовый URL API (из переменных окружения или localhost)
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
@@ -118,11 +119,7 @@ export const publicAPI = {
             type: 'single_choice',
             required: true,
             metadata: {
-              options: [
-                { id: 'opt1', text: 'Вариант 1' },
-                { id: 'opt2', text: 'Вариант 2' },
-                { id: 'opt3', text: 'Вариант 3' }
-              ]
+              options: ['Вариант 1', 'Вариант 2', 'Вариант 3']
             }
           },
           {
@@ -153,11 +150,30 @@ export const publicAPI = {
   createSession: async (slug: string, clientName: string, clientEmail?: string, clientPhone?: string) => {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
       await new Promise(resolve => setTimeout(resolve, 300));
-      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const test = mockDB.tests.find((t: any) => t.slug === slug);
+      if (!test) throw new Error('Test not found');
+      
+      const questions = mockDB.questions.filter((q: any) => q.test_id === test.id);
+      
+      const newSession = {
+        id: `sess-${Date.now()}`,
+        test_id: test.id,
+        test_title: test.title,
+        client_name: clientName,
+        client_email: clientEmail || null,
+        client_phone: clientPhone || null,
+        status: 'in_progress',
+        started_at: new Date().toISOString(),
+        completed_at: null,
+        answers_count: 0,
+      };
+      
+      mockDB.sessions.push(newSession);
+      
       return {
-        session_id: sessionId,
-        test_title: 'Демо тест',
-        total_questions: 3
+        session_id: newSession.id,
+        test_title: test.title,
+        total_questions: questions.length,
       };
     }
     
@@ -174,12 +190,38 @@ export const publicAPI = {
   saveAnswer: async (sessionId: string, questionId: string, answer: any) => {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
       await new Promise(resolve => setTimeout(resolve, 200));
-      console.log('MOCK saveAnswer:', { sessionId, questionId, answer_value: answer });
+      
+      const session = mockDB.sessions.find((s: any) => s.id === sessionId);
+      const question = mockDB.questions.find((q: any) => q.id === questionId);
+      
+      if (!session) throw new Error('Session not found');
+      
+      // Сохраняем ответ
+      const newAnswer = {
+        session_id: sessionId,
+        question_id: questionId,
+        question_text: question?.text || '',
+        question_type: question?.type || 'text',
+        order_index: question?.order_index || 0,
+        answer_value: answer,
+      };
+      
+      mockDB.answers.push(newAnswer);
+      
+      // Обновляем счётчик
+      const sessionIndex = mockDB.sessions.findIndex((s: any) => s.id === sessionId);
+      const allAnswers = mockDB.answers.filter((a: any) => a.session_id === sessionId);
+      mockDB.sessions[sessionIndex].answers_count = allAnswers.length;
+      
+      // Подсчитываем оставшиеся вопросы
+      const testQuestions = mockDB.questions.filter((q: any) => q.test_id === session.test_id);
+      const remainingQuestions = testQuestions.length - allAnswers.length;
+      
       return {
         session_id: sessionId,
         question_id: questionId,
-        next_exists: true,
-        remaining_questions: 10
+        next_exists: remainingQuestions > 0,
+        remaining_questions: Math.max(0, remainingQuestions),
       };
     }
     
@@ -194,12 +236,18 @@ export const publicAPI = {
   completeSession: async (sessionId: string) => {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
       await new Promise(resolve => setTimeout(resolve, 500));
-      console.log('MOCK completeSession:', sessionId);
+      
+      const index = mockDB.sessions.findIndex((s: any) => s.id === sessionId);
+      if (index === -1) throw new Error('Session not found');
+      
+      mockDB.sessions[index].status = 'completed';
+      mockDB.sessions[index].completed_at = new Date().toISOString();
+      
       return {
         session_id: sessionId,
-        completed_at: new Date().toISOString(),
+        completed_at: mockDB.sessions[index].completed_at,
         show_report: true,
-        report_url: `/reports/client/session/${sessionId}?format=html`
+        report_url: `/reports/client/session/${sessionId}?format=html`,
       };
     }
     
@@ -211,11 +259,21 @@ export const publicAPI = {
   getSession: async (sessionId: string) => {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
       await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const session = mockDB.sessions.find((s: any) => s.id === sessionId);
+      if (!session) throw new Error('Session not found');
+      
+      const answers = mockDB.answers.filter((a: any) => a.session_id === sessionId);
+      
       return {
         id: sessionId,
-        clientName: 'Тестовый клиент',
-        status: 'in_progress',
-        answers: []
+        clientName: session.client_name,
+        status: session.status,
+        testTitle: session.test_title,
+        answers: answers.map((a: any) => ({
+          question_id: a.question_id,
+          answer_value: a.answer_value,
+        })),
       };
     }
     
@@ -224,66 +282,227 @@ export const publicAPI = {
   },
 };
 
+// Мок-данные для тестов
+let mockTests: Test[] = [
+  {
+    id: 'test-1',
+    title: 'Тест на профориентацию',
+    description: 'Определите подходящую профессию',
+    is_published: true,
+    show_report_to_client: true,
+    questions_count: 10,
+    sessions_count: 25,
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z',
+  },
+  {
+    id: 'test-2',
+    title: 'Опросник удовлетворённости',
+    description: 'Измерение уровня удовлетворённости работой',
+    is_published: true,
+    show_report_to_client: false,
+    questions_count: 15,
+    sessions_count: 42,
+    created_at: '2024-02-20T14:30:00Z',
+    updated_at: '2024-02-20T14:30:00Z',
+  },
+  {
+    id: 'test-3',
+    title: 'Тест стрессоустойчивости',
+    description: 'Оценка уровня стрессоустойчивости',
+    is_published: false,
+    show_report_to_client: true,
+    questions_count: 8,
+    sessions_count: 0,
+    created_at: '2024-03-10T09:15:00Z',
+    updated_at: '2024-03-10T09:15:00Z',
+  },
+];
+
+let mockQuestions: Question[] = [
+  {
+    id: 'q1',
+    test_id: 'test-1',
+    order_index: 0,
+    type: 'single_choice',
+    text: 'Какая деятельность вам ближе?',
+    required: true,
+    weight: 33.33,
+    metadata: {
+      options: ['Работа с людьми', 'Работа с техникой', 'Творческая деятельность', 'Аналитическая работа']
+    }
+  },
+  {
+    id: 'q2',
+    test_id: 'test-1',
+    order_index: 1,
+    type: 'scale',
+    text: 'Оцените свою коммуникабельность',
+    required: true,
+    weight: 33.33,
+    metadata: { scale_min: 1, scale_max: 10 }
+  },
+  {
+    id: 'q3',
+    test_id: 'test-1',
+    order_index: 2,
+    type: 'text',
+    text: 'Опишите ваши сильные стороны',
+    required: false,
+    weight: 33.34,
+    metadata: {}
+  },
+];
+
 // ============================================
 // 📊 TESTS API (для Frontend A и B)
 // ============================================
 export const testsAPI = {
   // Получить все тесты
   getAll: async () => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      return mockTests;
+    }
     const response = await api.get<ApiResponse<Test[]>>('/tests');
     return response.data;
   },
 
   // Получить тест по ID
   getById: async (id: string) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const test = mockTests.find(t => t.id === id);
+      if (!test) throw new Error('Test not found');
+      return test;
+    }
     const response = await api.get<ApiResponse<Test>>(`/tests/${id}`);
     return response.data;
   },
 
   // Получить вопросы теста
   getQuestions: async (testId: string) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      return mockQuestions.filter(q => q.test_id === testId);
+    }
     const response = await api.get<ApiResponse<Question[]>>(`/tests/${testId}/questions`);
     return response.data;
   },
 
   // Создать новый тест
   create: async (data: { title: string; description?: string }) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const newTest: Test = {
+        id: `test-${Date.now()}`,
+        title: data.title,
+        description: data.description || '',
+        is_published: false,
+        show_report_to_client: true,
+        questions_count: 0,
+        sessions_count: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      mockTests.push(newTest);
+      return newTest;
+    }
     const response = await api.post<ApiResponse<Test>>('/tests', data);
     return response.data;
   },
 
   // Обновить тест
   update: async (id: string, data: Partial<Test>) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const testIndex = mockTests.findIndex(t => t.id === id);
+      if (testIndex === -1) throw new Error('Test not found');
+      mockTests[testIndex] = { ...mockTests[testIndex], ...data, updated_at: new Date().toISOString() };
+      return mockTests[testIndex];
+    }
     const response = await api.put<ApiResponse<Test>>(`/tests/${id}`, data);
     return response.data;
   },
 
   // Удалить тест
   delete: async (id: string) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      mockTests = mockTests.filter(t => t.id !== id);
+      return { success: true };
+    }
     const response = await api.delete(`/tests/${id}`);
     return response.data;
   },
 
   // Добавить вопрос к тесту
   addQuestion: async (testId: string, data: Partial<Question>) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 400));
+      const newQuestion: Question = {
+        id: `q-${Date.now()}`,
+        test_id: testId,
+        order_index: mockQuestions.filter(q => q.test_id === testId).length,
+        type: data.type || 'text',
+        text: data.text || '',
+        required: data.required || false,
+        weight: data.weight || 0,
+        metadata: data.metadata || {},
+      };
+      mockQuestions.push(newQuestion);
+      // Обновляем счётчик вопросов в тесте
+      const testIndex = mockTests.findIndex(t => t.id === testId);
+      if (testIndex !== -1) {
+        mockTests[testIndex].questions_count = mockQuestions.filter(q => q.test_id === testId).length;
+      }
+      return newQuestion;
+    }
     const response = await api.post<ApiResponse<Question>>(`/tests/${testId}/questions`, data);
     return response.data;
   },
 
   // Обновить вопрос (с testId для совместимости с хуками)
   updateQuestion: async (testId: string, questionId: string, data: Partial<Question>) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const qIndex = mockQuestions.findIndex(q => q.id === questionId);
+      if (qIndex === -1) throw new Error('Question not found');
+      mockQuestions[qIndex] = { ...mockQuestions[qIndex], ...data };
+      return mockQuestions[qIndex];
+    }
     const response = await api.put<ApiResponse<Question>>(`/questions/${questionId}`, data);
     return response.data;
   },
 
   // Удалить вопрос (с testId для совместимости с хуками)
   deleteQuestion: async (testId: string, questionId: string) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      mockQuestions = mockQuestions.filter(q => q.id !== questionId);
+      // Обновляем счётчик вопросов в тесте
+      const testIndex = mockTests.findIndex(t => t.id === testId);
+      if (testIndex !== -1) {
+        mockTests[testIndex].questions_count = mockQuestions.filter(q => q.test_id === testId).length;
+      }
+      return { success: true };
+    }
     const response = await api.delete(`/questions/${questionId}`);
     return response.data;
   },
 
   // Изменить порядок вопросов
   reorderQuestions: async (testId: string, questionIds: string[]) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      questionIds.forEach((id, index) => {
+        const qIndex = mockQuestions.findIndex(q => q.id === id);
+        if (qIndex !== -1) {
+          mockQuestions[qIndex].order_index = index;
+        }
+      });
+      return { success: true };
+    }
     const response = await api.put(`/tests/${testId}/questions/order`, { question_ids: questionIds });
     return response.data;
   },
@@ -328,6 +547,87 @@ export const sessionsAPI = {
     const response = await api.delete(`/sessions/${id}`);
     return response.data;
   },
+
+  // Создать сессию
+  create: async (data: { testId: string; clientName: string; clientEmail?: string; clientPhone?: string }) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const test = mockDB.tests.find((t: any) => t.id === data.testId);
+      const newSession = {
+        id: `sess-${Date.now()}`,
+        test_id: data.testId,
+        test_title: test?.title || 'Тест',
+        client_name: data.clientName,
+        client_email: data.clientEmail,
+        client_phone: data.clientPhone || null,
+        status: 'in_progress',
+        started_at: new Date().toISOString(),
+        completed_at: null,
+        answers_count: 0,
+      };
+      mockDB.sessions.push(newSession);
+      return newSession;
+    }
+    const response = await api.post<ApiResponse<Session>>('/sessions', data);
+    return response.data;
+  },
+
+  // Обновить сессию
+  update: async (id: string, data: Partial<Session>) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const index = mockDB.sessions.findIndex((s: any) => s.id === id);
+      if (index === -1) throw new Error('Session not found');
+      mockDB.sessions[index] = { ...mockDB.sessions[index], ...data };
+      return mockDB.sessions[index];
+    }
+    const response = await api.put<ApiResponse<Session>>(`/sessions/${id}`, data);
+    return response.data;
+  },
+
+  // Отправить ответ на вопрос
+  submitAnswer: async (sessionId: string, data: { questionId: string; answerValue: any }) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const session = mockDB.sessions.find((s: any) => s.id === sessionId);
+      const question = mockDB.questions.find((q: any) => q.id === data.questionId);
+      
+      if (!session) throw new Error('Session not found');
+      
+      const newAnswer = {
+        session_id: sessionId,
+        question_id: data.questionId,
+        question_text: question?.text || '',
+        question_type: question?.type || 'text',
+        order_index: question?.order_index || 0,
+        answer_value: data.answerValue,
+      };
+      
+      mockDB.answers.push(newAnswer);
+      
+      // Обновляем счётчик ответов в сессии
+      const sessionIndex = mockDB.sessions.findIndex((s: any) => s.id === sessionId);
+      mockDB.sessions[sessionIndex].answers_count = mockDB.answers.filter((a: any) => a.session_id === sessionId).length;
+      
+      return newAnswer;
+    }
+    const response = await api.post<ApiResponse<any>>(`/sessions/${sessionId}/answers`, data);
+    return response.data;
+  },
+
+  // Завершить сессию
+  complete: async (id: string) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const index = mockDB.sessions.findIndex((s: any) => s.id === id);
+      if (index === -1) throw new Error('Session not found');
+      mockDB.sessions[index].status = 'completed';
+      mockDB.sessions[index].completed_at = new Date().toISOString();
+      return mockDB.sessions[index];
+    }
+    const response = await api.post<ApiResponse<Session>>(`/sessions/${id}/complete`, {});
+    return response.data;
+  },
 };
 
 // ============================================
@@ -337,26 +637,81 @@ export const reportsAPI = {
   // Получить отчёт клиента (для Frontend C)
   getClientReport: async (sessionId: string) => {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-      console.log('MOCK getClientReport:', sessionId);
-      return {
-        testName: 'Тестовый тест',
-        completedAt: new Date().toISOString(),
-        summary: 'Тест пройден успешно',
-        recommendations: 'Рекомендации для улучшения',
-      };
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const session = mockDB.sessions.find((s: any) => s.id === sessionId);
+      const answers = mockDB.answers.filter((a: any) => a.session_id === sessionId);
+      
+      if (!session) throw new Error('Session not found');
+      
+      // Ищем существующий отчёт или создаём новый
+      let report = mockDB.reports.find((r: any) => r.session_id === sessionId);
+      
+      if (!report) {
+        report = {
+          session_id: sessionId,
+          test_name: session.test_title,
+          client_name: session.client_name,
+          completed_at: session.completed_at || new Date().toISOString(),
+          summary: `Тест "${session.test_title}" пройден клиентом ${session.client_name}. Всего ответов: ${answers.length}.`,
+          recommendations: 'На основе результатов теста рекомендуется проконсультироваться со специалистом для детальной интерпретации.',
+          answers: answers.map((a: any) => ({
+            question_id: a.question_id,
+            answer: a.answer_value,
+            created_at: new Date().toISOString(),
+          })),
+        };
+        mockDB.reports.push(report);
+      }
+      
+      return report;
     }
     const response = await api.get<ApiResponse<ClientReport>>(`/sessions/${sessionId}/report`);
     return response.data;
   },
 
+  // Создать/обновить отчёт
+  saveReport: async (sessionId: string, data: { summary?: string; recommendations?: string }) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const index = mockDB.reports.findIndex((r: any) => r.session_id === sessionId);
+      
+      if (index !== -1) {
+        mockDB.reports[index] = { ...mockDB.reports[index], ...data };
+        return mockDB.reports[index];
+      }
+      
+      throw new Error('Report not found');
+    }
+    const response = await api.put<ApiResponse<ClientReport>>(`/sessions/${sessionId}/report`, data);
+    return response.data;
+  },
+
   // Скачать отчёт теста (для Frontend A)
   downloadTestReport: async (testId: string) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      // Возвращаем mock Blob
+      return new Blob(['Mock report content'], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    }
     const response = await api.get<Blob>(`/tests/${testId}/report/download`);
     return response;
   },
 
   // Получить статистику теста
   getTestStats: async (testId: string) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const sessions = mockDB.sessions.filter((s: any) => s.test_id === testId);
+      const completedSessions = sessions.filter((s: any) => s.status === 'completed');
+      
+      return {
+        totalSessions: sessions.length,
+        completedSessions: completedSessions.length,
+        avgAnswers: sessions.length > 0 
+          ? sessions.reduce((sum: number, s: any) => sum + (s.answers_count || 0), 0) / sessions.length 
+          : 0,
+      };
+    }
     const response = await api.get<ApiResponse<{ totalSessions: number; avgScore?: number }>>(
       `/tests/${testId}/stats`
     );
@@ -370,6 +725,28 @@ export const reportsAPI = {
 export const authAPI = {
   // Войти
   login: async (email: string, password: string) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Мок-пользователи для тестирования
+      const mockUsers = [
+        { id: 'admin-1', email: 'admin@example.com', password: 'admin', full_name: 'Администратор', role: 'admin', is_active: true, created_at: new Date().toISOString() },
+        { id: 'user-1', email: 'ivanov@example.com', password: 'password', full_name: 'Иванов Иван', role: 'psychologist', is_active: true, created_at: new Date().toISOString() },
+        ...mockPsychologists.data.users.map(u => ({ ...u, password: 'password' }))
+      ];
+      
+      const user = mockUsers.find(u => u.email === email && u.password === password);
+      
+      if (!user) {
+        throw new Error('Неверный email или пароль');
+      }
+      
+      const { password: _, ...userWithoutPassword } = user;
+      const token = `mock-token-${user.id}-${Date.now()}`;
+      
+      return { token, user: userWithoutPassword };
+    }
+    
     const response = await api.post<ApiResponse<{ token: string; user: User }>>('/auth/login', {
       email,
       password,
@@ -379,18 +756,40 @@ export const authAPI = {
 
   // Выйти
   logout: async () => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      return { success: true };
+    }
     const response = await api.post('/auth/logout', {});
     return response;
   },
 
   // Получить текущего пользователя
   getCurrentUser: async () => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      // В мок-режиме возвращаем первого пользователя для простоты
+      return mockPsychologists.data.users[0];
+    }
     const response = await api.get<ApiResponse<User>>('/auth/me');
     return response.data;
   },
 
   // Регистрация
   register: async (data: { email: string; password: string; name: string }) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const newUser = {
+        id: `user-${Date.now()}`,
+        email: data.email,
+        full_name: data.name,
+        role: 'psychologist',
+        is_active: true,
+        created_at: new Date().toISOString(),
+      };
+      const token = `mock-token-${newUser.id}`;
+      return { token, user: newUser };
+    }
     const response = await api.post<ApiResponse<{ token: string; user: User }>>('/auth/register', data);
     return response.data;
   },
@@ -522,24 +921,60 @@ export const adminAPI = {
     phone?: string;
     expires_at?: string;
   }) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const newUser: any = {
+        id: `user-${Date.now()}`,
+        email: data.email,
+        full_name: data.full_name,
+        phone: data.phone || null,
+        is_active: true,
+        expires_at: data.expires_at || null,
+        created_at: new Date().toISOString(),
+        stats: { total_tests: 0, total_sessions: 0 }
+      };
+      mockPsychologists.data.users.push(newUser);
+      return { data: newUser };
+    }
     const response = await api.post('/auth/users', data);
     return response.data;
   },
 
   // Блокировать/разблокировать психолога
   toggleBlock: async (userId: string, isActive: boolean) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const user = mockPsychologists.data.users.find((u: any) => u.id === userId);
+      if (!user) throw new Error('User not found');
+      user.is_active = isActive;
+      return { data: user };
+    }
     const response = await api.put(`/auth/users/${userId}/block`, { is_active: isActive });
     return response.data;
   },
 
   // Удалить психолога
   deletePsychologist: async (userId: string) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const index = mockPsychologists.data.users.findIndex((u: any) => u.id === userId);
+      if (index === -1) throw new Error('User not found');
+      mockPsychologists.data.users.splice(index, 1);
+      return { success: true };
+    }
     const response = await api.delete(`/auth/users/${userId}`);
     return response.data;
   },
 
   // Продлить срок действия аккаунта
   extendExpiry: async (userId: string, newExpiryDate: string) => {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const user = mockPsychologists.data.users.find((u: any) => u.id === userId);
+      if (!user) throw new Error('User not found');
+      user.expires_at = newExpiryDate;
+      return { data: user };
+    }
     const response = await api.put(`/auth/users/${userId}/extend`, {
       expires_at: newExpiryDate,
     });

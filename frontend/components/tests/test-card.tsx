@@ -7,9 +7,9 @@ interface TestCardProps {
   test: {
     id: string;
     title: string;
-    description: string;
-    isPublished: boolean;
-    sessionsCount?: number;
+    description?: string;
+    is_published: boolean;
+    sessions_count?: number;
   };
 }
 
@@ -39,18 +39,18 @@ export default function TestCard({ test }: TestCardProps) {
           <p className="text-gray-600 text-sm line-clamp-2 leading-relaxed">{test.description}</p>
         </div>
         <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-          test.isPublished
+          test.is_published
             ? 'bg-green-50 text-green-700 border border-green-200'
             : 'bg-yellow-50 text-yellow-700 border border-yellow-200'
         }`}>
-          {test.isPublished ? 'Опубликован' : 'Черновик'}
+          {test.is_published ? 'Опубликован' : 'Черновик'}
         </div>
       </div>
 
       <div className="flex items-center justify-between">
         <div className="flex items-center text-sm text-gray-500">
           <Users className="h-4 w-4 mr-2" />
-          <span>{test.sessionsCount || 0} прохождений</span>
+          <span>{test.sessions_count || 0} прохождений</span>
         </div>
 
         <div className="flex space-x-2">
